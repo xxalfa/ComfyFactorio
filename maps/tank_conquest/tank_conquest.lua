@@ -1142,7 +1142,7 @@
 
         initialize_forces()
 
-        execute_on_tick( 30, draw_circle_lobby, { game.surfaces.nauvis, 28, { x = 0, y = 0 } } )
+        execute_on_tick( 60, draw_circle_lobby, { game.surfaces.nauvis, 28, { x = 0, y = 0 } } )
 
         -- global.table_of_properties.game_stage = 'do_nothing'
 
@@ -1862,7 +1862,13 @@
 
         end
 
-        -- if player.online_time == 0 then draw_gui_intro_frame( player ) end
+        draw_gui_intro_button( player )
+
+        if player.online_time == 0 then draw_gui_intro_frame( player ) end
+
+        draw_gui_belt_button( player )
+
+        event_on_click_lobby( player )
 
         if global.table_of_properties.game_stage == 'ongoing_game' then
 
@@ -1871,12 +1877,6 @@
             draw_gui_menu_form( player )
 
         end
-
-        draw_gui_intro_button( player )
-
-        draw_gui_belt_button( player )
-
-        event_on_click_lobby( player )
 
         -- draw_gui_spawn_menu( player ) -- only for tests
 
