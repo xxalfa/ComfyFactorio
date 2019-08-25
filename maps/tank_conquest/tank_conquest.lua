@@ -310,9 +310,21 @@
 
         player.gui.top.add( { type = 'sprite-button', name = 'draw_gui_menu_button', sprite = 'item/tank', tooltip = 'MENU' } )
 
-        -- player.gui.top.add( { type = 'sprite-button', name = 'draw_gui_menu_button_score', sprite = 'item/heavy-armor', tooltip = 'SCORE' } )
+    end
 
-        -- player.gui.top.add( { type = 'sprite-button', name = 'draw_gui_menu_button_squad', sprite = 'item/personal-roboport-equipment', tooltip = 'SQUAD' } )
+    function draw_gui_score_button( player )
+
+        if player.gui.top[ 'draw_gui_score_button' ] then player.gui.top[ 'draw_gui_score_button' ].destroy() end
+
+        player.gui.top.add( { type = 'sprite-button', name = 'draw_gui_score_button', sprite = 'item/heavy-armor', tooltip = 'SCORE' } )
+
+    end
+
+    function draw_gui_squad_button( player )
+
+        if player.gui.top[ 'draw_gui_squad_button' ] then player.gui.top[ 'draw_gui_squad_button' ].destroy() end
+
+        player.gui.top.add( { type = 'sprite-button', name = 'draw_gui_squad_button', sprite = 'item/personal-roboport-equipment', tooltip = 'SQUAD' } )
 
     end
 
@@ -332,9 +344,9 @@
 
     end
 
-    function draw_gui_status( player )
+    function draw_gui_status_frame( player )
 
-        if player.gui.top[ 'draw_gui_status' ] then player.gui.top[ 'draw_gui_status' ].destroy() end
+        if player.gui.top[ 'draw_gui_status_frame' ] then player.gui.top[ 'draw_gui_status_frame' ].destroy() end
 
         if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
 
@@ -342,7 +354,7 @@
 
         if #global.table_of_spots == 0 then return end
 
-        local element_frame = player.gui.top.add( { type = 'frame', name = 'draw_gui_status', direction = 'horizontal' } )
+        local element_frame = player.gui.top.add( { type = 'frame', name = 'draw_gui_status_frame', direction = 'horizontal' } )
 
         element_frame.style.height = 38
 
@@ -408,9 +420,9 @@
 
     end
 
-    function draw_gui_spots( player )
+    function draw_gui_spots_frame( player )
 
-        if player.gui.top[ 'draw_gui_spots' ] then player.gui.top[ 'draw_gui_spots' ].destroy() end
+        if player.gui.top[ 'draw_gui_spots_frame' ] then player.gui.top[ 'draw_gui_spots_frame' ].destroy() end
 
         if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
 
@@ -418,7 +430,7 @@
 
         if #global.table_of_spots == 0 then return end
 
-        local element_frame = player.gui.top.add( { type = 'frame', name = 'draw_gui_spots', direction = 'horizontal' } )
+        local element_frame = player.gui.top.add( { type = 'frame', name = 'draw_gui_spots_frame', direction = 'horizontal' } )
 
         element_frame.style.height = 38
 
@@ -466,11 +478,11 @@
 
     end
 
-    function draw_gui_menu_form( player )
+    function draw_gui_menu_frame( player )
 
-        if player.gui.center[ 'draw_gui_menu_form' ] then player.gui.center[ 'draw_gui_menu_form' ].destroy() end
+        if player.gui.center[ 'draw_gui_menu_frame' ] then player.gui.center[ 'draw_gui_menu_frame' ].destroy() end
 
-        local element_frame = player.gui.center.add( { type = 'frame', name = 'draw_gui_menu_form', direction = 'vertical' } )
+        local element_frame = player.gui.center.add( { type = 'frame', name = 'draw_gui_menu_frame', direction = 'vertical' } )
 
         element_frame.style.padding = 0
 
@@ -504,11 +516,11 @@
 
     end
 
-    function draw_gui_score( player )
+    function draw_gui_score_frame( player )
 
-        if player.gui.center[ 'draw_gui_score' ] then player.gui.center[ 'draw_gui_score' ].destroy() end
+        if player.gui.center[ 'draw_gui_score_frame' ] then player.gui.center[ 'draw_gui_score_frame' ].destroy() end
 
-        local element_frame = player.gui.center.add( { type = 'frame', name = 'draw_gui_score', direction = 'vertical' } )
+        local element_frame = player.gui.center.add( { type = 'frame', name = 'draw_gui_score_frame', direction = 'vertical' } )
 
         element_frame.style.padding = 0
 
@@ -522,19 +534,13 @@
 
         element_table.style.padding = 0
 
-        element_table.style.top_padding = 5
-
-        element_table.style.left_padding = 10
-
-        element_table.style.bottom_padding = 5
-
         element_table.style.margin = 0
 
         element_table.style.vertical_align = 'center'
 
         element_table.style.horizontal_align = 'center'
 
-        local element_label = element_table.add( { type = 'label', caption = global.table_of_properties[ player.force.name ].icon } )
+        local element_label = element_table.add( { type = 'label', caption = global.table_of_properties[ 'force_player_one' ].icon } )
 
         local element_label = element_table.add( { type = 'label', caption = '#' } )
 
@@ -548,7 +554,7 @@
 
         local element_label = element_table.add( { type = 'label', caption = 'POINTS' } )
 
-        local element_label = element_table.add( { type = 'label', caption = global.table_of_properties[ global.table_of_properties[ player.force.name ].enemy ].icon } )
+        local element_label = element_table.add( { type = 'label', caption = global.table_of_properties[ 'force_player_two' ].icon } )
 
         local element_label = element_table.add( { type = 'label', caption = '#' } )
 
@@ -562,19 +568,25 @@
 
         local element_label = element_table.add( { type = 'label', caption = 'POINTS' } )
 
-        for index = 1, 28 do local element_label = element_table.add( { type = 'label', caption = '•' } ) end
+        for index = 1, 14 * 32 do
+
+            local element_label = element_table.add( { type = 'label', caption = '•' } )
+
+        end
 
         for _, element_item in pairs( element_table.children ) do
 
             element_item.style.padding = 0
 
-            element_item.style.right_padding = 10
+            element_item.style.bottom_padding = 1
 
             element_item.style.margin = 0
 
             element_item.style.vertical_align = 'center'
 
-            element_item.style.font = 'heading-2'
+            element_item.style.horizontal_align = 'center'
+
+            element_item.style.font = 'default-tiny-bold'
 
             element_item.style.font_color = table_of_colors.white
 
@@ -582,13 +594,13 @@
 
     end
 
-    function draw_gui_squad( player )
+    function draw_gui_squad_frame( player )
 
-        if player.gui.left[ 'draw_gui_squad' ] then player.gui.left[ 'draw_gui_squad' ].destroy() end
+        if player.gui.left[ 'draw_gui_squad_frame' ] then player.gui.left[ 'draw_gui_squad_frame' ].destroy() end
 
-        if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
+        -- if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
 
-        local element_frame = player.gui.left.add( { type = 'frame', name = 'draw_gui_squad', direction = 'vertical' } )
+        local element_frame = player.gui.left.add( { type = 'frame', name = 'draw_gui_squad_frame', direction = 'vertical' } )
 
         element_frame.style.minimal_width = 50
 
@@ -650,13 +662,13 @@
 
     end
 
-    function draw_gui_spawn_menu( player )
+    function draw_gui_spawn_button( player )
 
-        if player.gui.center[ 'draw_gui_spawn_menu' ] then player.gui.center[ 'draw_gui_spawn_menu' ].destroy() end
+        if player.gui.center[ 'draw_gui_spawn_button' ] then player.gui.center[ 'draw_gui_spawn_button' ].destroy() end
 
-        if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
+        -- if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
 
-        local element_frame = player.gui.center.add( { type = 'frame', name = 'draw_gui_spawn_menu', direction = 'horizontal' } )
+        local element_frame = player.gui.center.add( { type = 'frame', name = 'draw_gui_spawn_button', direction = 'horizontal' } )
 
         local element_button = element_frame.add( { type = 'button', name = 'event_on_click_spawn_base', caption = 'BASE' } )
 
@@ -1268,19 +1280,19 @@
 
                     for _, player in pairs( game.connected_players ) do
 
+                        event_on_click_lobby( player )
+
                         if player.gui.top[ 'draw_gui_menu_button' ] then player.gui.top[ 'draw_gui_menu_button' ].destroy() end
 
-                        if player.gui.top[ 'draw_gui_status' ] then player.gui.top[ 'draw_gui_status' ].destroy() end
+                        if player.gui.center[ 'draw_gui_menu_frame' ] then player.gui.center[ 'draw_gui_menu_frame' ].destroy() end
 
-                        if player.gui.top[ 'draw_gui_spots' ] then player.gui.top[ 'draw_gui_spots' ].destroy() end
+                        if player.gui.top[ 'draw_gui_status_frame' ] then player.gui.top[ 'draw_gui_status_frame' ].destroy() end
 
-                        -- if player.gui.left[ 'draw_gui_squad' ] then player.gui.left[ 'draw_gui_squad' ].destroy() end
+                        if player.gui.top[ 'draw_gui_spots_frame' ] then player.gui.top[ 'draw_gui_spots_frame' ].destroy() end
 
-                        if player.gui.center[ 'draw_gui_menu_form' ] then player.gui.center[ 'draw_gui_menu_form' ].destroy() end
+                        if player.gui.left[ 'draw_gui_squad_frame' ] then player.gui.left[ 'draw_gui_squad_frame' ].destroy() end
 
-                        -- draw_gui_score( player )
-
-                        event_on_click_lobby( player )
+                        if player.admin then draw_gui_score_frame( player ) end
 
                     end
 
@@ -1288,9 +1300,9 @@
 
                 for _, player in pairs( game.connected_players ) do
 
-                    draw_gui_status( player )
+                    draw_gui_status_frame( player )
 
-                    draw_gui_spots( player )
+                    draw_gui_spots_frame( player )
 
                 end
 
@@ -1358,17 +1370,15 @@
 
                 for _, player in pairs( game.connected_players ) do
 
-                    -- if player.gui.left[ 'draw_gui_squad' ] then player.gui.left[ 'draw_gui_squad' ].destroy() end
+                    event_on_click_lobby( player )
 
-                    -- if player.gui.center[ 'draw_gui_score' ] then player.gui.center[ 'draw_gui_score' ].destroy() end
+                    if player.gui.left[ 'draw_gui_squad_frame' ] then player.gui.left[ 'draw_gui_squad_frame' ].destroy() end
 
-                    if player.gui.center[ 'draw_gui_menu_form' ] then player.gui.center[ 'draw_gui_menu_form' ].destroy() end
+                    if player.gui.center[ 'draw_gui_score_frame' ] then player.gui.center[ 'draw_gui_score_frame' ].destroy() end
 
                     draw_gui_menu_button( player )
 
-                    draw_gui_menu_form( player )
-
-                    event_on_click_lobby( player )
+                    draw_gui_menu_frame( player )
 
                 end
 
@@ -1490,19 +1500,19 @@
 
         if event.element.valid and event.element.name == 'draw_gui_menu_button' then
 
-            if player.gui.center[ 'draw_gui_menu_form' ] then player.gui.center[ 'draw_gui_menu_form' ].destroy() else draw_gui_menu_form( player ) end
+            if player.gui.center[ 'draw_gui_menu_frame' ] then player.gui.center[ 'draw_gui_menu_frame' ].destroy() else draw_gui_menu_frame( player ) end
 
         end
 
-        if event.element.valid and event.element.name == 'event_on_click_score' then
+        if event.element.valid and event.element.name == 'draw_gui_score_button' then
 
-            if player.gui.center[ 'draw_gui_score' ] then player.gui.center[ 'draw_gui_score' ].destroy() else draw_gui_score( player ) end
+            if player.gui.center[ 'draw_gui_score_frame' ] then player.gui.center[ 'draw_gui_score_frame' ].destroy() else draw_gui_score_frame( player ) end
 
         end
 
-        if event.element.valid and event.element.name == 'event_on_click_squad' then
+        if event.element.valid and event.element.name == 'draw_gui_squad_button' then
 
-            if player.gui.left[ 'draw_gui_squad' ] then player.gui.left[ 'draw_gui_squad' ].destroy() else draw_gui_squad( player ) end
+            if player.gui.left[ 'draw_gui_squad_frame' ] then player.gui.left[ 'draw_gui_squad_frame' ].destroy() else draw_gui_squad_frame( player ) end
 
         end
 
@@ -1514,7 +1524,7 @@
 
             event_on_click_lobby( player )
 
-            if player.gui.center[ 'draw_gui_menu_form' ] then player.gui.center[ 'draw_gui_menu_form' ].destroy() end
+            if player.gui.center[ 'draw_gui_menu_frame' ] then player.gui.center[ 'draw_gui_menu_frame' ].destroy() end
 
         end
 
@@ -1530,7 +1540,7 @@
 
                 event_on_click_join( player )
 
-                if player.gui.center[ 'draw_gui_menu_form' ] then player.gui.center[ 'draw_gui_menu_form' ].destroy() end
+                if player.gui.center[ 'draw_gui_menu_frame' ] then player.gui.center[ 'draw_gui_menu_frame' ].destroy() end
 
             end
 
@@ -1718,7 +1728,7 @@
 
         local surface = player.surface
 
-        if player.gui.center[ 'draw_gui_spawn_menu' ] then player.gui.center[ 'draw_gui_spawn_menu' ].destroy() end
+        if player.gui.center[ 'draw_gui_spawn_button' ] then player.gui.center[ 'draw_gui_spawn_button' ].destroy() end
 
         local position = global.table_of_spawns[ player.index ]
 
@@ -1750,7 +1760,7 @@
 
         end
 
-        -- draw_gui_spawn_menu( player )
+        if player.admin then draw_gui_spawn_button( player ) end
 
         player_icon_remove( player )
 
@@ -1862,23 +1872,27 @@
 
         end
 
+        event_on_click_lobby( player )
+
         draw_gui_intro_button( player )
 
         if player.online_time == 0 then draw_gui_intro_frame( player ) end
 
-        draw_gui_belt_button( player )
+        -- if player.admin then draw_gui_score_button( player ) end
 
-        event_on_click_lobby( player )
+        -- if player.admin then draw_gui_squad_button( player ) end
+
+        -- if player.admin then draw_gui_spawn_button( player ) end
+
+        draw_gui_belt_button( player )
 
         if global.table_of_properties.game_stage == 'ongoing_game' then
 
             draw_gui_menu_button( player )
 
-            draw_gui_menu_form( player )
+            draw_gui_menu_frame( player )
 
         end
-
-        -- draw_gui_spawn_menu( player ) -- only for tests
 
     end
 
