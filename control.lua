@@ -7,7 +7,7 @@ server_commands = require 'utils.server'
 require "utils.server_commands"
 require "utils.utils"
 require "utils.table"
-require "utils.corpse_util"  --disable for hunger games
+-- require "utils.corpse_util"  --disable for hunger games
 require "utils.color_data"
 require "utils.session_data"
 require "chatbot"
@@ -17,10 +17,10 @@ require "antigrief_admin_panel"
 require "group"
 require "player_list"
 require "poll"
-require "score"
+-- require "score"
 require "modules.floaty_chat"
 require "modules.autohotbar"
---require "on_tick_schedule"
+require "on_tick_schedule"
 
 ---- enable modules here ----
 --require "tools.cheat_mode"
@@ -54,6 +54,7 @@ require "modules.autohotbar"
 -----------------------------
 
 ---- enable maps here ----
+require "maps.crash_site.crash_site"
 --require "maps.tank_conquest.tank_conquest"
 --require "maps.territorial_control"
 --require "maps.cave_choppy.cave_miner"
