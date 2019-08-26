@@ -1,5 +1,5 @@
 
-    -- factorio scenario -- crash site -- sebber26 and xalpha made this --
+    -- factorio scenario -- crash site ribbon edition by sebber26/xalpha --
 
     global.table_of_properties = {}
 
