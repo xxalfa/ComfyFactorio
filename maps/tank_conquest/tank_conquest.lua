@@ -1,6 +1,10 @@
 
     -- factorio scenario -- tank conquest -- xalpha made this --
 
+    local event = require 'utils.event'
+
+    local map_functions = require 'tools.map_functions'
+
     local blueprint_poi_base_json = require 'maps.tank_conquest.blueprint_poi_base_json'
 
     local blueprint_poi_spot_one_json = require 'maps.tank_conquest.blueprint_poi_spot_one_json'
@@ -49,74 +53,7 @@
 
     global.table_of_ores = { 'iron-ore', 'copper-ore', 'stone', 'coal' }
 
-    local table_of_colors = { squad = { r = 75, g = 155, b = 45 }, team = { r = 65, g = 120, b = 200 }, enemy = { r = 190, g = 55, b = 50 }, neutral = { r = 77, g = 77, b = 77 }, damage = { r = 255, g = 0, b = 255 }, white = { r = 255, g = 255, b = 255 } }
-
-    local table_of_loots = { { name = 'iron-ore', count = 50 }, { name = 'copper-ore', count = 50 }, { name = 'stone', count = 50 }, { name = 'coal', count = 50 }, { name = 'defender-capsule', count = 10 }, { name = 'land-mine', count = 20 }, { name = 'gun-turret', count = 5 }, { name = 'piercing-rounds-magazine', count = 50 }, { name = 'uranium-rounds-magazine', count = 10 }, { name = 'combat-shotgun', count = 1 }, { name = 'shotgun-shell', count = 20 }, { name = 'piercing-shotgun-shell', count = 20 }, { name = 'flamethrower', count = 1 }, { name = 'flamethrower-ammo', count = 20 }, { name = 'rocket-launcher', count = 1 }, { name = 'rocket', count = 20 }, { name = 'explosive-rocket', count = 10 }, { name = 'atomic-bomb', count = 1 }, { name = 'grenade', count = 20 }, { name = 'cluster-grenade', count = 10 }, { name = 'cannon-shell', count = 20 }, { name = 'explosive-cannon-shell', count = 10 }, { name = 'uranium-cannon-shell', count = 5 }, { name = 'explosive-uranium-cannon-shell', count = 5 }, { name = 'modular-armor', count = 1 }, { name = 'power-armor', count = 1 }, { name = 'power-armor-mk2', count = 1 }, { name = 'exoskeleton-equipment', count = 1 }, { name = 'battery-mk2-equipment', count = 1 }, { name = 'energy-shield-equipment', count = 1 }, { name = 'fusion-reactor-equipment', count = 1 }, { name = 'solid-fuel', count = 20 }, { name = 'rocket-fuel', count = 10 }, { name = 'nuclear-fuel', count = 1 }, { name = 'gate', count = 10 }, { name = 'stone-wall', count = 20 } }
-
-    local battle_belt = { 'raw-fish', 'repair-pack', 'wood', 'defender-capsule', 'stone-wall', 'gun-turret', 'land-mine', 'flamethrower-ammo', 'grenade', 'cluster-grenade', 'firearm-magazine', 'piercing-rounds-magazine', 'uranium-rounds-magazine', 'rocket', 'explosive-rocket', 'atomic-bomb', 'cannon-shell', 'explosive-cannon-shell', 'uranium-cannon-shell', 'explosive-uranium-cannon-shell' }
-
-    local construction_belt = { 'inserter', 'fast-inserter', 'long-handed-inserter', 'transport-belt', 'underground-belt', 'splitter', 'assembling-machine-1', 'assembling-machine-2', 'small-electric-pole', 'medium-electric-pole', 'electric-mining-drill', 'stone-furnace', 'steel-furnace', 'train-stop', 'rail-signal', 'rail-chain-signal', 'rail', 'boiler', 'steam-engine', 'offshore-pump' }
-
-    local map_functions = require 'tools.map_functions'
-
-    local event = require 'utils.event'
-
-    local map_intro = [[                                                            - - - T A N K    C O N Q U E S T - - -
-
-    When the round is running, the ticket overview is shown in the header. Your objective
-    is to defend your team's tickets and withdraw the tickets from the opposing team as
-    quickly as possible.
-
-    There are two ways to withdraw the tickets from the opposing team. First, by killing
-    the player and second, by taking the spots. A spot withdraw 0.05 tickets per second
-    from the opposing team.
-
-    The battlefield has two special features: First, there is a point of interest in the
-    north and south. And second, there are loot boxes scattered throughout the battlefield.
-
-    PvP battles and the conquest of the spots are the deciding factor to win the round.
-
-    The battlefield is created when at least two players are online.
-
-    There is no biter evolution from pollution, time or destruction.
-
-    Chat settings can be set with @all or @team. Default: @all]]
-
-    local function draw_gui_intro_button( player )
-
-        if player.gui.top[ 'draw_gui_intro_button' ] then return end
-
-        local element_button = player.gui.top.add( { type = 'sprite-button', name = 'draw_gui_intro_button', caption = '?', tooltip = 'INTRO' } )
-
-        element_button.style.width = 38
-
-        element_button.style.height = 38
-
-        element_button.style.font_color = { r = 0.5, g = 0.3, b = 0.99 }
-
-        element_button.style.font = 'heading-1'
-
-    end
-
-    local function draw_gui_intro_frame( player )
-
-        if player.gui.center[ 'draw_gui_intro_frame' ] then player.gui.center[ 'draw_gui_intro_frame' ].destroy() end
-
-        local element_frame = player.gui.center.add( { type = 'frame', name = 'draw_gui_intro_frame', direction = 'vertical' } )
-
-        element_frame = element_frame.add( { type = 'frame' } )
-
-        local element_label = element_frame.add( { type = 'label', name = 'draw_gui_intro_content', caption = map_intro } )
-
-        element_label.style.top_padding = 15
-
-        element_label.style.single_line = false
-
-        element_label.style.font = 'heading-2'
-
-        element_label.style.font_color = { r = 0.7, g = 0.6, b = 0.99 }
-
-    end
+    global.table_of_colors = { squad = { r = 75, g = 155, b = 45 }, team = { r = 65, g = 120, b = 200 }, enemy = { r = 190, g = 55, b = 50 }, neutral = { r = 77, g = 77, b = 77 }, damage = { r = 255, g = 0, b = 255 }, white = { r = 255, g = 255, b = 255 } }
 
     local function initialize_forces()
 
@@ -248,7 +185,7 @@
 
     end
 
-    function initialize_surface()
+    local function initialize_surface()
 
         game.map_settings.enemy_evolution.time_factor = 0
 
@@ -304,7 +241,7 @@
 
     end
 
-    function draw_gui_menu_button( player )
+    local function draw_gui_menu_button( player )
 
         if player.gui.top[ 'draw_gui_menu_button' ] then player.gui.top[ 'draw_gui_menu_button' ].destroy() end
 
@@ -312,39 +249,7 @@
 
     end
 
-    function draw_gui_score_button( player )
-
-        if player.gui.top[ 'draw_gui_score_button' ] then player.gui.top[ 'draw_gui_score_button' ].destroy() end
-
-        player.gui.top.add( { type = 'sprite-button', name = 'draw_gui_score_button', sprite = 'item/heavy-armor', tooltip = 'SCORE' } )
-
-    end
-
-    function draw_gui_squad_button( player )
-
-        if player.gui.top[ 'draw_gui_squad_button' ] then player.gui.top[ 'draw_gui_squad_button' ].destroy() end
-
-        player.gui.top.add( { type = 'sprite-button', name = 'draw_gui_squad_button', sprite = 'item/personal-roboport-equipment', tooltip = 'SQUAD' } )
-
-    end
-
-    function draw_gui_belt_button( player )
-
-        if global.table_of_settings[ player.index ].belt == nil then
-
-            global.table_of_settings[ player.index ].belt = 'battle';
-
-            for index, slot in pairs( battle_belt ) do player.set_quick_bar_slot( index, slot ) end
-
-        end
-
-        if player.gui.top[ 'draw_gui_belt_button' ] then player.gui.top[ 'draw_gui_belt_button' ].destroy() end
-
-        player.gui.top.add( { type = 'sprite-button', name = 'draw_gui_belt_button', sprite = 'item/repair-pack', tooltip = 'BELT' } )
-
-    end
-
-    function draw_gui_status_frame( player )
+    local function draw_gui_status_frame( player )
 
         if player.gui.top[ 'draw_gui_status_frame' ] then player.gui.top[ 'draw_gui_status_frame' ].destroy() end
 
@@ -376,17 +281,17 @@
 
         element_progressbar.style.top_padding = 10
 
-        element_progressbar.style.color = table_of_colors.team
+        element_progressbar.style.color = global.table_of_colors.team
 
         local element_label = element_frame.add( { type = 'label', caption = math.floor( global.table_of_properties[ player.force.name ].available_tickets ) } )
 
-        element_label.style.font_color = table_of_colors.white
+        element_label.style.font_color = global.table_of_colors.white
 
         local element_label = element_frame.add( { type = 'label', caption = global.table_of_properties[ player.force.name ].icon } )
 
         element_label.style.left_padding = 20
 
-        element_label.style.font_color = table_of_colors.white
+        element_label.style.font_color = global.table_of_colors.white
 
         local element_label = element_frame.add( { type = 'label', caption = seconds_to_clock( global.table_of_properties.countdown_in_seconds ) } )
 
@@ -394,17 +299,17 @@
 
         element_label.style.right_padding = 20
 
-        element_label.style.font_color = table_of_colors.white
+        element_label.style.font_color = global.table_of_colors.white
 
         local element_label = element_frame.add( { type = 'label', caption = global.table_of_properties[ global.table_of_properties[ player.force.name ].enemy ].icon } )
 
-        element_label.style.font_color = table_of_colors.white
+        element_label.style.font_color = global.table_of_colors.white
 
         local element_label = element_frame.add( { type = 'label', caption = math.floor( global.table_of_properties[ global.table_of_properties[ player.force.name ].enemy ].available_tickets ) } )
 
         element_label.style.left_padding = 20
 
-        element_label.style.font_color = table_of_colors.white
+        element_label.style.font_color = global.table_of_colors.white
 
         local element_progressbar = element_frame.add( { type = 'progressbar', value = 100 } )
 
@@ -414,13 +319,13 @@
 
         element_progressbar.style.top_padding = 10
 
-        element_progressbar.style.color = table_of_colors.enemy
+        element_progressbar.style.color = global.table_of_colors.enemy
 
         for _, element_item in pairs( element_frame.children ) do element_item.style.font = 'heading-1' end
 
     end
 
-    function draw_gui_spots_frame( player )
+    local function draw_gui_spots_frame( player )
 
         if player.gui.top[ 'draw_gui_spots_frame' ] then player.gui.top[ 'draw_gui_spots_frame' ].destroy() end
 
@@ -460,15 +365,15 @@
 
             element_label.style.font = 'heading-1'
 
-            local color = table_of_colors.white
+            local color = global.table_of_colors.white
 
             if player.force.name ~= 'force_spectator' then
 
-                color = table_of_colors.neutral
+                color = global.table_of_colors.neutral
 
-                if spot.properties.force.name == global.table_of_properties[ player.force.name ].name and spot.properties.value == 100 then color = table_of_colors.team end
+                if spot.properties.force.name == global.table_of_properties[ player.force.name ].name and spot.properties.value == 100 then color = global.table_of_colors.team end
 
-                if spot.properties.force.name == global.table_of_properties[ player.force.name ].enemy and spot.properties.value == 100 then color = table_of_colors.enemy end
+                if spot.properties.force.name == global.table_of_properties[ player.force.name ].enemy and spot.properties.value == 100 then color = global.table_of_colors.enemy end
 
             end
 
@@ -478,7 +383,7 @@
 
     end
 
-    function draw_gui_menu_frame( player )
+    local function draw_gui_menu_frame( player )
 
         if player.gui.center[ 'draw_gui_menu_frame' ] then player.gui.center[ 'draw_gui_menu_frame' ].destroy() end
 
@@ -510,159 +415,13 @@
 
             element_item.style.font = 'heading-1'
 
-            element_item.style.font_color = table_of_colors.white
+            element_item.style.font_color = global.table_of_colors.white
 
         end
 
     end
 
-    function draw_gui_score_frame( player )
-
-        if player.gui.center[ 'draw_gui_score_frame' ] then player.gui.center[ 'draw_gui_score_frame' ].destroy() end
-
-        local element_frame = player.gui.center.add( { type = 'frame', name = 'draw_gui_score_frame', direction = 'vertical' } )
-
-        element_frame.style.padding = 0
-
-        element_frame.style.margin = 0
-
-        element_frame.style.vertical_align = 'center'
-
-        element_frame.style.horizontal_align = 'center'
-
-        local element_table = element_frame.add( { type = 'table', column_count = 14, draw_horizontal_lines = true } )
-
-        element_table.style.padding = 0
-
-        element_table.style.margin = 0
-
-        element_table.style.vertical_align = 'center'
-
-        element_table.style.horizontal_align = 'center'
-
-        local element_label = element_table.add( { type = 'label', caption = global.table_of_properties[ 'force_player_one' ].icon } )
-
-        local element_label = element_table.add( { type = 'label', caption = '#' } )
-
-        local element_label = element_table.add( { type = 'label', caption = 'NAME' } )
-
-        local element_label = element_table.add( { type = 'label', caption = 'CLASS' } )
-
-        local element_label = element_table.add( { type = 'label', caption = 'K' } )
-
-        local element_label = element_table.add( { type = 'label', caption = 'D' } )
-
-        local element_label = element_table.add( { type = 'label', caption = 'POINTS' } )
-
-        local element_label = element_table.add( { type = 'label', caption = global.table_of_properties[ 'force_player_two' ].icon } )
-
-        local element_label = element_table.add( { type = 'label', caption = '#' } )
-
-        local element_label = element_table.add( { type = 'label', caption = 'NAME' } )
-
-        local element_label = element_table.add( { type = 'label', caption = 'CLASS' } )
-
-        local element_label = element_table.add( { type = 'label', caption = 'K' } )
-
-        local element_label = element_table.add( { type = 'label', caption = 'D' } )
-
-        local element_label = element_table.add( { type = 'label', caption = 'POINTS' } )
-
-        for index = 1, 14 * 32 do
-
-            local element_label = element_table.add( { type = 'label', caption = '•' } )
-
-        end
-
-        for _, element_item in pairs( element_table.children ) do
-
-            element_item.style.padding = 0
-
-            element_item.style.bottom_padding = 1
-
-            element_item.style.margin = 0
-
-            element_item.style.vertical_align = 'center'
-
-            element_item.style.horizontal_align = 'center'
-
-            element_item.style.font = 'default-tiny-bold'
-
-            element_item.style.font_color = table_of_colors.white
-
-        end
-
-    end
-
-    function draw_gui_squad_frame( player )
-
-        if player.gui.left[ 'draw_gui_squad_frame' ] then player.gui.left[ 'draw_gui_squad_frame' ].destroy() end
-
-        -- if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
-
-        local element_frame = player.gui.left.add( { type = 'frame', name = 'draw_gui_squad_frame', direction = 'vertical' } )
-
-        element_frame.style.minimal_width = 50
-
-        element_frame.style.padding = 0
-
-        element_frame.style.margin = 0
-
-        element_frame.style.top_margin = 5
-
-        element_frame.style.left_margin = 5
-
-        local element_table = element_frame.add( { type = 'table', column_count = 4 } )
-
-        element_table.style.padding = 0
-
-        element_table.style.margin = 0
-
-        for index = 1, 8 do
-
-            local element_label = element_table.add( { type = 'label', caption = 'SQUAD ' .. index } )
-
-            local element_label = element_table.add( { type = 'label' } )
-
-            local element_label = element_table.add( { type = 'label' } )
-
-            local element_button = element_table.add( { type = 'sprite-button', name = 'aaa_' .. index, caption = 'JOIN' } )
-
-            element_button.style.width = 50
-
-            element_button.style.height = 25
-
-            local element_label = element_table.add( { type = 'label', caption = '•' } )
-
-            local element_label = element_table.add( { type = 'label', caption = '•' } )
-
-            local element_label = element_table.add( { type = 'label', caption = '•' } )
-
-            local element_label = element_table.add( { type = 'label', caption = '•' } )
-
-        end
-
-        for _, element_item in pairs( element_table.children ) do
-
-            element_item.style.minimal_width = 50
-
-            element_item.style.padding = 0
-
-            element_item.style.margin = 0
-
-            element_item.style.vertical_align = 'center'
-
-            element_item.style.horizontal_align  = 'center'
-
-            element_item.style.font  = 'heading-2'
-
-            element_item.style.font_color = table_of_colors.white
-
-        end
-
-    end
-
-    function draw_gui_spawn_button( player )
+    local function draw_gui_spawn_button( player )
 
         if player.gui.center[ 'draw_gui_spawn_button' ] then player.gui.center[ 'draw_gui_spawn_button' ].destroy() end
 
@@ -672,9 +431,9 @@
 
         local element_button = element_frame.add( { type = 'button', name = 'event_on_click_spawn_base', caption = 'BASE' } )
 
-        -- element_button.style.color = table_of_colors.damage
+        -- element_button.style.color = global.table_of_colors.damage
 
-        element_button.style.font_color = table_of_colors.white
+        element_button.style.font_color = global.table_of_colors.white
 
         for index, spot in pairs( global.table_of_spots ) do
 
@@ -682,13 +441,13 @@
 
             -- element_button.enabled = false
 
-            local color = table_of_colors.neutral
+            local color = global.table_of_colors.neutral
 
             -- if spot.properties.force.name == global.table_of_properties[ player.force.name ].name and spot.properties.value >= 50 then element_button.enabled = true end
 
-            if spot.properties.force.name == global.table_of_properties[ player.force.name ].name and spot.properties.value > 0 then color = table_of_colors.team end
+            if spot.properties.force.name == global.table_of_properties[ player.force.name ].name and spot.properties.value > 0 then color = global.table_of_colors.team end
 
-            if spot.properties.force.name == global.table_of_properties[ player.force.name ].enemy and spot.properties.value > 0 then color = table_of_colors.enemy end
+            if spot.properties.force.name == global.table_of_properties[ player.force.name ].enemy and spot.properties.value > 0 then color = global.table_of_colors.enemy end
 
             element_button.style.font_color = color
 
@@ -714,7 +473,7 @@
 
     end
 
-    function create_a_tank( player )
+    local function create_a_tank( player )
 
         player.insert( { name = 'light-armor', count = 1 } )
 
@@ -754,7 +513,7 @@
 
     end
 
-    function create_a_base( force_name, base_position )
+    local function create_a_base( force_name, base_position )
 
         local surface = game.surfaces.tank_conquest
 
@@ -798,11 +557,11 @@
 
     end
 
-    function create_a_spot( spot_name, spot_position, spot_blueprint )
+    local function create_a_spot( spot_name, spot_position, spot_blueprint )
 
         local surface = game.surfaces.tank_conquest
 
-        local spot = { name = spot_name, position = spot_position, force = { name = 'neutral' }, value = 0, color = table_of_colors.white }
+        local spot = { name = spot_name, position = spot_position, force = { name = 'neutral' }, value = 0, color = global.table_of_colors.white }
 
         local table_of_positions = {}
 
@@ -874,7 +633,7 @@
 
     end
 
-    function create_a_point_of_interest( poi_blueprint, poi_position )
+    local function create_a_point_of_interest( poi_blueprint, poi_position )
 
         local surface = game.surfaces.tank_conquest
 
@@ -924,7 +683,7 @@
 
     end
 
-    function create_a_safety_cube( surface, force, coordinate, width, height )
+    local function create_a_safety_cube( surface, force, coordinate, width, height )
 
         local center = { x = math.floor( width / 2 ), y = math.floor( height / 2 ) }
 
@@ -958,29 +717,7 @@
 
     end
 
-    function seconds_to_clock( seconds )
-
-        local seconds = tonumber( seconds )
-
-        if seconds <= 0 then
-
-            return '00:00:00'
-
-        else
-
-            local hours = string.format( '%02.f', math.floor( seconds / 3600 ) )
-
-            local minutes = string.format( '%02.f', math.floor( seconds / 60 - ( hours * 60 ) ) )
-
-            seconds = string.format( '%02.f', math.floor( seconds - hours * 3600 - minutes * 60 ) )
-
-            return hours .. ':' .. minutes .. ':' .. seconds
-
-        end
-
-    end
-
-    function draw_a_polygon( position, radius, angle, sides )
+    local function draw_a_polygon( position, radius, angle, sides )
 
         if not type( position ) == 'table' then return end
 
@@ -1008,7 +745,7 @@
 
     end
 
-    function draw_circle_lobby( surface, spawn_diameter, spawn_position )
+    local function draw_circle_lobby( surface, spawn_diameter, spawn_position )
 
         for x = - spawn_diameter, spawn_diameter do for y = - spawn_diameter, spawn_diameter do
 
@@ -1036,7 +773,7 @@
 
     end
 
-    function event_on_click_join( player )
+    local function event_on_click_join( player )
 
         if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
 
@@ -1086,7 +823,7 @@
 
     end
 
-    function event_on_click_lobby( player )
+    local function event_on_click_lobby( player )
 
         local surface = game.surfaces.nauvis
 
@@ -1122,13 +859,13 @@
 
     end
 
-    function event_on_click_spawn( player )
+    local function event_on_click_spawn( player )
 
         game.print( 'A' )
 
     end
 
-    function shuffle( table_of_items )
+    local function shuffle( table_of_items )
 
         local length_of_items = #table_of_items
 
@@ -1162,13 +899,13 @@
 
     event.on_init( on_init )
 
-    -- function execute_on_tick( tick, func, args )
+    -- function execute_on_tick( tick, function_to_execute, table_of_arguments )
 
     --     if not global.on_tick_schedule then return end
 
     --     if not global.on_tick_schedule[ tick ] then global.on_tick_schedule[ tick ] = {} end
 
-    --     table.insert( global.on_tick_schedule[ tick ], { func = func, args = args } )
+    --     table.insert( global.on_tick_schedule[ tick ], { func = function_to_execute, args = table_of_arguments } )
 
     -- end
 
@@ -1176,7 +913,7 @@
 
         if game.tick % 30 == 0 and global.table_of_damages ~= nil then
 
-            for _, item in pairs( global.table_of_damages ) do item.surface.create_entity( { name = 'flying-text', position = item.position, text = math.ceil( item.damage ), color = table_of_colors.damage } ) end
+            for _, item in pairs( global.table_of_damages ) do item.surface.create_entity( { name = 'flying-text', position = item.position, text = math.ceil( item.damage ), color = global.table_of_colors.damage } ) end
 
             global.table_of_damages = nil
 
@@ -1290,9 +1027,9 @@
 
                         if player.gui.top[ 'draw_gui_spots_frame' ] then player.gui.top[ 'draw_gui_spots_frame' ].destroy() end
 
-                        if player.gui.left[ 'draw_gui_squad_frame' ] then player.gui.left[ 'draw_gui_squad_frame' ].destroy() end
+                        -- if player.gui.left[ 'draw_gui_squad_frame' ] then player.gui.left[ 'draw_gui_squad_frame' ].destroy() end
 
-                        if player.admin then draw_gui_score_frame( player ) end
+                        -- if player.admin then draw_gui_score_frame( player ) end
 
                     end
 
@@ -1372,9 +1109,9 @@
 
                     event_on_click_lobby( player )
 
-                    if player.gui.left[ 'draw_gui_squad_frame' ] then player.gui.left[ 'draw_gui_squad_frame' ].destroy() end
+                    -- if player.gui.left[ 'draw_gui_squad_frame' ] then player.gui.left[ 'draw_gui_squad_frame' ].destroy() end
 
-                    if player.gui.center[ 'draw_gui_score_frame' ] then player.gui.center[ 'draw_gui_score_frame' ].destroy() end
+                    -- if player.gui.center[ 'draw_gui_score_frame' ] then player.gui.center[ 'draw_gui_score_frame' ].destroy() end
 
                     draw_gui_menu_button( player )
 
@@ -1490,29 +1227,9 @@
 
         local player = game.players[ event.player_index ]
 
-        if event.element.valid and event.element.name == 'draw_gui_intro_content' then player.gui.center[ 'draw_gui_intro_frame' ].destroy() return end
-
-        if event.element.valid and event.element.name == 'draw_gui_intro_button' then
-
-            if player.gui.center[ 'draw_gui_intro_frame' ] then player.gui.center[ 'draw_gui_intro_frame' ].destroy() else draw_gui_intro_frame( player ) end
-
-        end
-
         if event.element.valid and event.element.name == 'draw_gui_menu_button' then
 
             if player.gui.center[ 'draw_gui_menu_frame' ] then player.gui.center[ 'draw_gui_menu_frame' ].destroy() else draw_gui_menu_frame( player ) end
-
-        end
-
-        if event.element.valid and event.element.name == 'draw_gui_score_button' then
-
-            if player.gui.center[ 'draw_gui_score_frame' ] then player.gui.center[ 'draw_gui_score_frame' ].destroy() else draw_gui_score_frame( player ) end
-
-        end
-
-        if event.element.valid and event.element.name == 'draw_gui_squad_button' then
-
-            if player.gui.left[ 'draw_gui_squad_frame' ] then player.gui.left[ 'draw_gui_squad_frame' ].destroy() else draw_gui_squad_frame( player ) end
 
         end
 
@@ -1546,24 +1263,6 @@
 
         end
 
-        if event.element.valid and event.element.name == 'draw_gui_belt_button' then
-
-            if global.table_of_settings[ player.index ].belt == 'battle' then
-
-                global.table_of_settings[ player.index ].belt = 'construction'
-
-                for index, slot in pairs( construction_belt ) do player.set_quick_bar_slot( index, slot ) end
-
-            else
-
-                global.table_of_settings[ player.index ].belt = 'battle'
-
-                for index, slot in pairs( battle_belt ) do player.set_quick_bar_slot( index, slot ) end
-
-            end
-
-        end
-
         if event.element.valid and event.element.name == 'event_on_click_spawn_1' then
 
             event_on_click_spawn( player )
@@ -1586,7 +1285,7 @@
 
         if event.message:match( '@all' ) then
 
-            player.print( 'The chat settings have been changed to @all.', table_of_colors.damage )
+            player.print( 'The chat settings have been changed to @all.', global.table_of_colors.damage )
 
             global.table_of_settings[ player.index ].chat = 'all'
 
@@ -1594,7 +1293,7 @@
 
         if event.message:match( '@team' ) then
 
-            player.print( 'The chat settings have been changed to @team.', table_of_colors.damage )
+            player.print( 'The chat settings have been changed to @team.', global.table_of_colors.damage )
 
             global.table_of_settings[ player.index ].chat = 'team'
 
@@ -1630,24 +1329,6 @@
 
     event.add( defines.events.on_console_chat, on_console_chat )
 
-    local function on_chunk_generated( event )
-
-        if event.surface.name ~= 'tank_conquest' then return end
-
-        local chunk_position = { x = event.area.left_top.x, y = event.area.left_top.y }
-
-        for x = 0, 31 do for y = 0, 31 do
-
-            local tile_position = { x = chunk_position.x + x, y = chunk_position.y + y }
-
-            if math.random( 1, 3000 ) == 1 and event.surface.can_place_entity( { name = 'wooden-chest', force = 'enemy', position = tile_position } ) then event.surface.create_entity( { name = 'wooden-chest', force = 'enemy', position = tile_position } ) end
-
-        end end
-
-    end
-
-    event.add( defines.events.on_chunk_generated, on_chunk_generated )
-
     local function on_entity_damaged( event )
 
         if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
@@ -1667,24 +1348,6 @@
     end
 
     event.add( defines.events.on_entity_damaged, on_entity_damaged )
-
-    local function on_entity_died( event )
-
-        if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
-
-        if event.entity.name == 'wooden-chest' and event.entity.force.name == 'enemy' then
-
-            local loot = table_of_loots[ math.random( 1, #table_of_loots ) ]
-
-            event.entity.surface.spill_item_stack( event.entity.position, loot, true )
-
-            event.entity.surface.create_entity( { name = 'flying-text', position = event.entity.position, text = '+' .. loot.count .. ' ' .. loot.name, color = table_of_colors.white } )
-
-        end
-
-    end
-
-    event.add( defines.events.on_entity_died, on_entity_died )
 
     local function on_player_changed_position( event )
 
@@ -1747,6 +1410,8 @@
         if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
 
         local player = game.players[ event.player_index ]
+
+        player.ticks_to_respawn = 900
 
         global.table_of_spawns[ player.index ] = player.force.get_spawn_position( player.surface )
 
@@ -1820,7 +1485,7 @@
 
             if p.force.name ~= player.force.name and p.name ~= player_name_of_the_causer then
 
-                p.print( player_death_message, table_of_colors.damage )
+                p.print( player_death_message, global.table_of_colors.damage )
 
             end
 
@@ -1874,17 +1539,7 @@
 
         event_on_click_lobby( player )
 
-        draw_gui_intro_button( player )
-
-        if player.online_time == 0 then draw_gui_intro_frame( player ) end
-
-        -- if player.admin then draw_gui_score_button( player ) end
-
-        -- if player.admin then draw_gui_squad_button( player ) end
-
         -- if player.admin then draw_gui_spawn_button( player ) end
-
-        draw_gui_belt_button( player )
 
         if global.table_of_properties.game_stage == 'ongoing_game' then
 
@@ -1902,11 +1557,11 @@
 
         if global.table_of_drawings[ player.index ] == nil then
 
-            -- local icon = rendering.draw_circle( { target = player.character, target_offset = { x = 0, y = - 3.7 }, force = game.forces.force_player_one, surface = player.surface, color = table_of_colors.team, radius = 0.3, filled = true, only_in_alt_mode = false } )
+            -- local icon = rendering.draw_circle( { target = player.character, target_offset = { x = 0, y = - 3.7 }, force = game.forces.force_player_one, surface = player.surface, color = global.table_of_colors.team, radius = 0.3, filled = true, only_in_alt_mode = false } )
 
             -- local color = { r = player.color.r * 0.6 + 0.35, g = player.color.g * 0.6 + 0.35, b = player.color.b * 0.6 + 0.35, a = 1 }
 
-            local icon = rendering.draw_text( { text = global.table_of_properties[ player.force.name ].icon, target = player.character, target_offset = { 0, - 3.7 }, surface = player.surface, color = table_of_colors.white, scale = 2, alignment = 'center' } )
+            local icon = rendering.draw_text( { text = global.table_of_properties[ player.force.name ].icon, target = player.character, target_offset = { 0, - 3.7 }, surface = player.surface, color = global.table_of_colors.white, scale = 2, alignment = 'center' } )
 
             global.table_of_drawings[ player.index ] = icon
 
@@ -1935,3 +1590,37 @@
         end
 
     end
+
+    function seconds_to_clock( seconds )
+
+        local seconds = tonumber( seconds )
+
+        if seconds <= 0 then
+
+            return '00:00:00'
+
+        else
+
+            local hours = string.format( '%02.f', math.floor( seconds / 3600 ) )
+
+            local minutes = string.format( '%02.f', math.floor( seconds / 60 - ( hours * 60 ) ) )
+
+            seconds = string.format( '%02.f', math.floor( seconds - hours * 3600 - minutes * 60 ) )
+
+            return hours .. ':' .. minutes .. ':' .. seconds
+
+        end
+
+    end
+
+    -- require 'maps.tank_conquest.module_loot_boxes'
+
+    require 'maps.tank_conquest.module_map_introduction'
+
+    require 'maps.tank_conquest.module_player_belt'
+
+    -- require 'maps.tank_conquest.module_player_scoreboard'
+
+    -- require 'maps.tank_conquest.module_player_squad'
+
+    require 'maps.tank_conquest.module_support_request'
