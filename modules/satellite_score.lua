@@ -1,6 +1,7 @@
 -- level up ranks with launching satellites -- by mewmew
 
 local event = require 'utils.event'
+local Server = require 'utils.server'
 
 local function get_rank()
 	for i = #global.satellite_score, 1, -1 do
@@ -16,10 +17,7 @@ local function satellite_score_toggle_button(player)
 	button.style.font = "default-bold"
 	button.style.minimal_height = 38
 	button.style.minimal_width = 38
-	button.style.top_padding = 2
-	button.style.left_padding = 4
-	button.style.right_padding = 4
-	button.style.bottom_padding = 2
+	button.style.padding = 1
 end
 
 local function level_up_popup(player)
@@ -86,7 +84,7 @@ local function on_rocket_launched(event)
 	if (global.satellites_in_space < 10) or ((global.satellites_in_space < 50) and ((global.satellites_in_space % 5) == 0)) or ((global.satellites_in_space % 25) == 0) then
 		local message = 'A satellite has been launched! Total count: ' .. global.satellites_in_space
         game.print(message)
-        server_commands.to_discord_embed(message)
+        Server.to_discord_embed(message)
 	end    
 end
 

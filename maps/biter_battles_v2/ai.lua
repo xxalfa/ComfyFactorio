@@ -1,16 +1,33 @@
-local event = require 'utils.event' 
+local Public = {}
+local bb_config = require "maps.biter_battles_v2.config"
 local math_random = math.random
-local ai = {}
+
+--[[
+local vector_radius = 360
+local attack_vectors = {}
+attack_vectors.north = {}
+attack_vectors.south = {}
+for x = vector_radius * -1, vector_radius, 1 do
+	for y = 0, vector_radius, 1 do
+		local r = math.sqrt(x ^ 2 + y ^ 2)
+		if r < vector_radius and r > vector_radius - 1 then
+			attack_vectors.north[#attack_vectors.north + 1] = {x, y * -1}
+			attack_vectors.south[#attack_vectors.south + 1] = {x, y}
+		end
+	end
+end
+local size_of_vectors = #attack_vectors.north
+]]
 
 local threat_values = {
-	["small-spitter"] = 2,
-	["small-biter"] = 2,
+	["small-spitter"] = 1.5,
+	["small-biter"] = 1.5,
 	["medium-spitter"] = 4,
 	["medium-biter"] = 4,
-	["big-spitter"] = 8,
-	["big-biter"] = 8,
-	["behemoth-spitter"] = 24,
-	["behemoth-biter"] = 24,
+	["big-spitter"] = 12,
+	["big-biter"] = 12,
+	["behemoth-spitter"] = 32,
+	["behemoth-biter"] = 32,
 	["small-worm-turret"] = 8,
 	["medium-worm-turret"] = 12,
 	["big-worm-turret"] = 16,
@@ -18,6 +35,10 @@ local threat_values = {
 	["biter-spawner"] = 16,
 	["spitter-spawner"] = 16
 }
+
+-- these areas are for north
+local middle_spawner_area = {left_top = {-600,  -1000}, right_bottom = {600,  -400}}
+local whole_spawner_area  = {left_top = {-2048, -1400}, right_bottom = {2048, -400}}
 
 local function get_active_biter_count(biter_force_name)
 	local count = 0
@@ -27,13 +48,42 @@ local function get_active_biter_count(biter_force_name)
 	return count
 end
 
-function set_biter_raffle_table(surface, biter_force_name)
-	local biters = surface.find_entities_filtered({type = "unit", force = biter_force_name})
+local unit_evo_limits = {
+	["small-spitter"] = 0.6,
+	["small-biter"] = 0.6,
+	["medium-spitter"] = 0.8,
+	["medium-biter"] = 0.8,
+	["big-spitter"] = 2,
+	["big-biter"] = 2,
+}
+
+local function set_biter_raffle_table(surface, biter_force_name)
+	-- It's fine to only sample the middle
+	local area = middle_spawner_area
+	
+	-- If south_biters: Mirror area along x-axis
+	if biter_force_name == "south_biters" then
+		area = {left_top = {area.left_top[1], -1*area.right_bottom[2]}, right_bottom = {area.right_bottom[1], -1*area.left_top[2]}}
+	end
+
+	local biters = surface.find_entities_filtered({type = "unit", force = biter_force_name, area = area})
 	if not biters[1] then return end
 	global.biter_raffle[biter_force_name] = {}
-	for _, e in pairs(biters) do
-		if math_random(1,3) == 1 then
-			global.biter_raffle[biter_force_name][#global.biter_raffle[biter_force_name] + 1] = e.name
+	local raffle = global.biter_raffle[biter_force_name]
+	local i = 1
+	local evolution_factor = global.bb_evolution[biter_force_name]
+	
+	for key, e in pairs(biters) do
+		if key % 5 == 0 then
+			if unit_evo_limits[e.name] then
+				if evolution_factor < unit_evo_limits[e.name] then
+					raffle[i] = e.name
+					i = i + 1
+				end
+			else
+				raffle[i] = e.name
+				i = i + 1
+			end		
 		end
 	end				
 end
@@ -51,37 +101,55 @@ local function get_threat_ratio(biter_force_name)
 end
 
 local function is_biter_inactive(biter, unit_number, biter_force_name)
-	if not biter.entity.valid then return true end	
-	if game.tick - biter.active_since < bb_config.biter_timeout then return false end	
-	if biter.entity.surface.count_entities_filtered({area = {{biter.entity.position.x - 16, biter.entity.position.y - 16},{biter.entity.position.x + 16, biter.entity.position.y + 16}}, force = {"north", "south"}}) ~= 0 then
-		global.active_biters[biter_force_name][unit_number].active_since = game.tick
-		return false 
-	end		
-	if global.bb_debug then game.print(biter_force_name .. " unit " .. unit_number .. " timed out at tick age " .. game.tick - biter.active_since) end	
-	biter.entity.destroy()
-	return true
+	if not biter.entity then 
+		print("BiterBattles: active unit " .. unit_number .. " removed, possibly died.")
+		return true 
+	end	
+	if not biter.entity.valid then 
+		print("BiterBattles: active unit " .. unit_number .. " removed, biter invalid.")
+		return true 
+	end	
+	if not biter.entity.unit_group then
+		print("BiterBattles: active unit " .. unit_number .. "  at x" .. biter.entity.position.x .. " y" .. biter.entity.position.y .. " removed, had no unit group.")
+		return true 
+	end	
+	if not biter.entity.unit_group.valid then
+		print("BiterBattles: active unit " .. unit_number .. " removed, unit group invalid.")
+		return true 
+	end
+	if game.tick - biter.active_since > bb_config.biter_timeout then
+		print("BiterBattles: " .. biter_force_name .. " unit " .. unit_number .. " timed out at tick age " .. game.tick - biter.active_since .. ".")
+		biter.entity.destroy()
+		return true 
+	end
 end
 
-ai.destroy_old_age_biters = function()
-	local surface = game.surfaces["biter_battles"]
-	for _, e in pairs(surface.find_entities_filtered({type = "unit"})) do
-		if not e.unit_group then
-			if math_random(1,8) == 1 then e.destroy() end
+local function set_active_biters(group)
+	if not group.valid then return end
+	local active_biters = global.active_biters[group.force.name]
+	
+	for _, unit in pairs(group.members) do
+		if not active_biters[unit.unit_number] then
+			active_biters[unit.unit_number] = {entity = unit, active_since = game.tick}
 		end
 	end
 end
 
-ai.destroy_inactive_biters = function()	
-	for _, biter_force_name in pairs({"north_biters", "south_biters"}) do
-		for unit_number, biter in pairs(global.active_biters[biter_force_name]) do
-			if is_biter_inactive(biter, unit_number, biter_force_name) then
-				global.active_biters[biter_force_name][unit_number] = nil
-			end
+Public.destroy_inactive_biters = function()
+	local biter_force_name = global.next_attack .. "_biters"
+	
+	for _, group in pairs(global.unit_groups) do
+		set_active_biters(group)
+	end
+	
+	for unit_number, biter in pairs(global.active_biters[biter_force_name]) do
+		if is_biter_inactive(biter, unit_number, biter_force_name) then
+			global.active_biters[biter_force_name][unit_number] = nil
 		end
 	end
 end
 
-ai.send_near_biters_to_silo = function()
+Public.send_near_biters_to_silo = function()
 	if game.tick < 108000 then return end
 	if not global.rocket_silo["north"] then return end
 	if not global.rocket_silo["south"] then return end
@@ -109,17 +177,35 @@ ai.send_near_biters_to_silo = function()
 		})
 end
 
-local function get_random_close_spawner(surface, biter_force_name)
-	local spawners = surface.find_entities_filtered({type = "unit-spawner", force = biter_force_name})	
-	if not spawners[1] then return false end
+local function get_random_spawner(biter_force_name)
+	local spawners = global.unit_spawners[biter_force_name]
+	local size_of_spawners = #spawners
 	
-	local spawner = spawners[math_random(1,#spawners)]
-	for i = 1, 5, 1 do
-		local spawner_2 = spawners[math_random(1,#spawners)]
-		if spawner_2.position.x ^ 2 + spawner_2.position.y ^ 2 < spawner.position.x ^ 2 + spawner.position.y ^ 2 then spawner = spawner_2 end	
+	for _ = 1, 256, 1 do
+		if size_of_spawners == 0 then return end
+		local index = math_random(1, size_of_spawners)
+		local spawner = spawners[index]	
+		if spawner and spawner.valid then
+			return spawner
+		else	
+			table.remove(spawners, index)
+			size_of_spawners = size_of_spawners - 1
+		end	
+	end	
+end
+
+local function get_random_close_spawner(surface, biter_force_name)
+	local nearest_spawner = get_random_spawner(biter_force_name)
+	if not nearest_spawner then return end
+
+	for _ = 1, 16, 1 do	
+		local spawner = get_random_spawner(biter_force_name)
+		if spawner.position.x ^ 2 + spawner.position.y ^ 2 < nearest_spawner.position.x ^ 2 + nearest_spawner.position.y ^ 2 then
+			nearest_spawner = spawner
+		end
 	end	
 	
-	return spawner
+	return nearest_spawner
 end
 
 local function select_units_around_spawner(spawner, force_name, biter_force_name)
@@ -145,17 +231,20 @@ local function select_units_around_spawner(spawner, force_name, biter_force_name
 	end
 	
 	--Manual spawning of additional units
-	for c = 1, max_unit_count - unit_count, 1 do
-		if threat < 0 then break end
-		local biter_name = global.biter_raffle[biter_force_name][math_random(1, #global.biter_raffle[biter_force_name])]
-		local position = spawner.surface.find_non_colliding_position(biter_name, spawner.position, 128, 2)
-		if not position then break end
-		
-		local biter = spawner.surface.create_entity({name = biter_name, force = biter_force_name, position = position})
-		threat = threat - threat_values[biter.name]
-		
-		valid_biters[#valid_biters + 1] = biter
-		global.active_biters[biter.force.name][biter.unit_number] = {entity = biter, active_since = game.tick}
+	local size_of_biter_raffle = #global.biter_raffle[biter_force_name]
+	if size_of_biter_raffle > 0 then
+		for c = 1, max_unit_count - unit_count, 1 do
+			if threat < 0 then break end
+			local biter_name = global.biter_raffle[biter_force_name][math_random(1, size_of_biter_raffle)]
+			local position = spawner.surface.find_non_colliding_position(biter_name, spawner.position, 128, 2)
+			if not position then break end
+			
+			local biter = spawner.surface.create_entity({name = biter_name, force = biter_force_name, position = position})
+			threat = threat - threat_values[biter.name]
+			
+			valid_biters[#valid_biters + 1] = biter
+			global.active_biters[biter.force.name][biter.unit_number] = {entity = biter, active_since = game.tick}
+		end
 	end
 	
 	if global.bb_debug then game.print(get_active_biter_count(biter_force_name) .. " active units for " .. biter_force_name) end
@@ -167,22 +256,41 @@ local function send_group(unit_group, force_name, nearest_player_unit)
 	local target = nearest_player_unit.position
 	if math_random(1,2) == 1 then target = global.rocket_silo[force_name].position end
 	
+	local commands = {}
+	
+	--[[
+	local vector = attack_vectors[force_name][math_random(1, size_of_vectors)]
+	local position = {target.x + vector[1], target.y + vector[2]}
+	position = unit_group.surface.find_non_colliding_position("stone-furnace", position, 96, 1)
+	if position then
+		if math.abs(position.y) < math.abs(unit_group.position.y) then
+			commands[#commands + 1] = {
+				type = defines.command.attack_area,
+				destination = position,
+				radius = 24,
+				distraction = defines.distraction.by_enemy
+			}
+		end
+	end
+	]]
+	
+	commands[#commands + 1] = {
+		type = defines.command.attack_area,
+		destination = target,
+		radius = 32,
+		distraction = defines.distraction.by_enemy
+	}
+	
+	commands[#commands + 1] = {
+		type = defines.command.attack,
+		target = global.rocket_silo[force_name],
+		distraction = defines.distraction.by_enemy
+	}
+	
 	unit_group.set_command({
 		type = defines.command.compound,
 		structure_type = defines.compound_command.return_last,
-		commands = {
-			{
-				type = defines.command.attack_area,
-				destination = target,
-				radius = 32,
-				distraction=defines.distraction.by_enemy
-			},									
-			{
-				type = defines.command.attack,
-				target = global.rocket_silo[force_name],
-				distraction = defines.distraction.by_enemy
-			}
-		}
+		commands = commands
 	})
 	return true
 end
@@ -227,8 +335,22 @@ local function get_unit_group_position(surface, nearest_player_unit, spawner)
 	return unit_group_position
 end
 
+local function get_active_threat(biter_force_name)
+	local active_threat = 0	
+	for unit_number, biter in pairs(global.active_biters[biter_force_name]) do
+		if biter.entity then 
+			if biter.entity.valid then
+				active_threat = active_threat + threat_values[biter.entity.name]
+			end
+		end
+	end
+	return active_threat
+end
+
 local function create_attack_group(surface, force_name, biter_force_name)
-	if global.bb_threat[biter_force_name] <= 0 then return false end
+	local threat = global.bb_threat[biter_force_name]	
+	if get_active_threat(biter_force_name) > threat * 1.20 then return end
+	if threat <= 0 then return false end
 	
 	if bb_config.max_active_biters - get_active_biter_count(biter_force_name) < bb_config.max_group_size then
 		if global.bb_debug then game.print("Not enough slots for biters for team " .. force_name .. ". Available slots: " .. bb_config.max_active_biters - get_active_biter_count(biter_force_name)) end
@@ -240,7 +362,7 @@ local function create_attack_group(surface, force_name, biter_force_name)
 		if global.bb_debug then game.print("No spawner found for team " .. force_name) end
 		return false 
 	end
-	
+
 	local nearest_player_unit = surface.find_nearest_enemy({position = spawner.position, max_distance = 2048, force = biter_force_name})
 	if not nearest_player_unit then nearest_player_unit = global.rocket_silo[force_name] end
 	
@@ -251,21 +373,40 @@ local function create_attack_group(surface, force_name, biter_force_name)
 	local unit_group = surface.create_unit_group({position = unit_group_position, force = biter_force_name})
 	for _, unit in pairs(units) do unit_group.add_member(unit) end
 	send_group(unit_group, force_name, nearest_player_unit)
+	
+	global.unit_groups[unit_group.group_number] = unit_group
 end
 
-ai.main_attack = function()
+Public.pre_main_attack = function()
 	local surface = game.surfaces["biter_battles"]
 	local force_name = global.next_attack
-	local biter_force_name = force_name .. "_biters"
-	local wave_amount = math.ceil(get_threat_ratio(biter_force_name) * 7)
-	
-	set_biter_raffle_table(surface, biter_force_name)
-	
-	for c = 1, wave_amount, 1 do		
-		create_attack_group(surface, force_name, biter_force_name)
+
+	if not global.training_mode or (global.training_mode and #game.forces[force_name].connected_players > 0) then
+		local biter_force_name = force_name .. "_biters"
+		global.main_attack_wave_amount = math.ceil(get_threat_ratio(biter_force_name) * 7)
+
+		set_biter_raffle_table(surface, biter_force_name)
+
+		if global.bb_debug then game.print(global.main_attack_wave_amount .. " unit groups designated for " .. force_name .. " biters.") end
+	else
+		global.main_attack_wave_amount = 0
 	end
-	if global.bb_debug then game.print(wave_amount .. " unit groups designated for " .. force_name .. " biters.") end
-	
+end
+
+
+Public.perform_main_attack = function()
+	if global.main_attack_wave_amount > 0 then
+		local surface = game.surfaces["biter_battles"]
+		local force_name = global.next_attack
+		local biter_force_name = force_name .. "_biters"
+
+		create_attack_group(surface, force_name, biter_force_name)
+		global.main_attack_wave_amount = global.main_attack_wave_amount - 1	
+	end
+end
+
+Public.post_main_attack = function()
+	global.main_attack_wave_amount = 0
 	if global.next_attack == "north" then
 		global.next_attack = "south"
 	else
@@ -273,94 +414,60 @@ ai.main_attack = function()
 	end	
 end
 
-ai.raise_evo = function()
-	if #game.forces.north.connected_players == 0 or #game.forces.south.connected_players == 0 then return end
+Public.wake_up_sleepy_groups = function()
+	local force_name = global.next_attack
+	local biter_force_name = force_name .. "_biters"
+	local entity
+	local unit_group	
+	for unit_number, biter in pairs(global.active_biters[biter_force_name]) do
+		entity = biter.entity
+		if entity then 
+			if entity.valid then
+				unit_group = entity.unit_group
+				if unit_group then
+					if unit_group.valid then
+						if unit_group.state == defines.group_state.finished then
+							local nearest_player_unit = entity.surface.find_nearest_enemy({position = entity.position, max_distance = 2048, force = biter_force_name})
+							if not nearest_player_unit then nearest_player_unit = global.rocket_silo[force_name] end
+							send_group(unit_group, force_name, nearest_player_unit)
+							print("BiterBattles: Woke up Unit Group at x" .. unit_group.position.x .. " y" .. unit_group.position.y .. ".")
+							return
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+Public.raise_evo = function()
+	if global.freeze_players then return end
+	if not global.training_mode and (#game.forces.north.connected_players == 0 or #game.forces.south.connected_players == 0) then return end
+	if not global.total_passive_feed_redpotion then global.total_passive_feed_redpotion = 0 end
 	local amount = math.ceil(global.difficulty_vote_value * global.evo_raise_counter)
-	for _, f in pairs({"north_biters", "south_biters"}) do	
-		set_evo_and_threat(amount, "logistic-science-pack", f)
-	end
-	global.evo_raise_counter = global.evo_raise_counter + 1
-end
-
---Prevent Players from damaging Rocket Silos
-local function protect_silo(event)	
-	if event.cause then
-		if event.cause.type == "unit" then return end		 
-	end
-	if event.entity.name ~= "rocket-silo" then return end		
-	event.entity.health = event.entity.health + event.final_damage_amount
-end
-
---Prevent Players from doing direct pvp combat
-local function ignore_pvp(event)	
-	if not event.cause then return end
-	if event.cause.force.name == "north" then
-		if event.entity.force.name == "south" then
-			if not event.entity.valid then return end
-			event.entity.health = event.entity.health + event.final_damage_amount
-			return
+	global.total_passive_feed_redpotion = global.total_passive_feed_redpotion + amount
+	local biter_teams = {["north_biters"] = "north", ["south_biters"] = "south"}
+	local a_team_has_players = false
+	for bf, pf in pairs(biter_teams) do
+		if #game.forces[pf].connected_players > 0 then
+			set_evo_and_threat(amount, "automation-science-pack", bf)
+			a_team_has_players = true
 		end
 	end
-	if event.cause.force.name == "south" then
-		if event.entity.force.name == "north" then
-			if not event.entity.valid then return end
-			event.entity.health = event.entity.health + event.final_damage_amount
-			return
-		end
-	end
-end
-
---Biter Evasion
-local random_max = 10000
-
-local function get_evade_chance(force_name)	
-	return random_max - (random_max / global.bb_evasion[force_name])
-end
-
-local function evade(event)
-	if not event.entity.valid then return end
-	if not global.bb_evasion[event.entity.force.name] then return end	
-	if event.final_damage_amount > event.entity.prototype.max_health * global.bb_evasion[event.entity.force.name] then return end
-	if math_random(1, random_max) > get_evade_chance(event.entity.force.name) then return end
-	event.entity.health = event.entity.health + event.final_damage_amount
-end
-
-local function on_entity_damaged(event)
-	evade(event)
-	protect_silo(event)
-	--ignore_pvp(event)
+	if not a_team_has_players then return end
+	global.evo_raise_counter = global.evo_raise_counter + (1 * 0.50)
 end
 
 --Biter Threat Value Substraction
-local function on_entity_died(event)
-	if not event.entity.valid then return end
-	if not threat_values[event.entity.name] then return end
-	if event.entity.type == "unit" then
-		global.active_biters[event.entity.force.name][event.entity.unit_number] = nil
-	end
-	global.bb_threat[event.entity.force.name] = global.bb_threat[event.entity.force.name] - threat_values[event.entity.name]		
-end
-
---Flamethrower Turret Nerf
-local function on_research_finished(event)
-	local research = event.research
-	local force_name = research.force.name
-	if research.name == "flamethrower" then
-		if not global.flamethrower_damage then global.flamethrower_damage = {} end
-		global.flamethrower_damage[force_name] = -0.6
-		game.forces[force_name].set_turret_attack_modifier("flamethrower-turret", global.flamethrower_damage[force_name])
-		game.forces[force_name].set_ammo_damage_modifier("flamethrower", global.flamethrower_damage[force_name])						
+function Public.subtract_threat(entity)
+	if not threat_values[entity.name] then return end
+	if entity.type == "unit" then
+		global.active_biters[entity.force.name][entity.unit_number] = nil
 	end
 	
-	if string.sub(research.name, 0, 18) == "refined-flammables" then
-		global.flamethrower_damage[force_name] = global.flamethrower_damage[force_name] + 0.05
-		game.forces[force_name].set_turret_attack_modifier("flamethrower-turret", global.flamethrower_damage[force_name])								
-		game.forces[force_name].set_ammo_damage_modifier("flamethrower", global.flamethrower_damage[force_name])
-	end	
+	global.bb_threat[entity.force.name] = global.bb_threat[entity.force.name] - threat_values[entity.name]
+	
+	return true
 end
 
-event.add(defines.events.on_entity_damaged, on_entity_damaged)
-event.add(defines.events.on_entity_died, on_entity_died)
-event.add(defines.events.on_research_finished, on_research_finished)
-
-return ai
+return Public

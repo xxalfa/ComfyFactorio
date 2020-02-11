@@ -194,6 +194,12 @@ end
 
 room.three_rocks = function(surface, cell_left_top, direction)
 	local left_top = {x = cell_left_top.x * grid_size, y = cell_left_top.y * grid_size}
+	
+	if math.random(1,2) == 1 then
+		local position = surface.find_non_colliding_position("market", {x = left_top.x + grid_size * 0.5, y = left_top.y + grid_size * 0.5}, grid_size * 0.5, 1)
+		if position then	super_market(surface, position, math.floor(global.maze_depth * 0.01) + 1) end
+	end
+	
 	surface.create_entity({name = rock_raffle[math.random(1, #rock_raffle)], position = {left_top.x + grid_size * 0.2, left_top.y + grid_size * 0.8}, force = "neutral"})
 	surface.create_entity({name = rock_raffle[math.random(1, #rock_raffle)], position = {left_top.x + grid_size * 0.8, left_top.y + grid_size * 0.8}, force = "neutral"})
 	surface.create_entity({name = rock_raffle[math.random(1, #rock_raffle)], position = {left_top.x + grid_size * 0.5, left_top.y + grid_size * 0.2}, force = "neutral"})
@@ -202,6 +208,12 @@ end
 
 room.quad_rocks = function(surface, cell_left_top, direction)
 	local left_top = {x = cell_left_top.x * grid_size, y = cell_left_top.y * grid_size}
+	
+	if math.random(1,2) == 1 then
+		local position = surface.find_non_colliding_position("market", {x = left_top.x + grid_size * 0.5, y = left_top.y + grid_size * 0.5}, grid_size * 0.5, 1)
+		if position then	super_market(surface, position, math.floor(global.maze_depth * 0.01) + 1) end
+	end
+	
 	surface.create_entity({name = rock_raffle[math.random(1, #rock_raffle)], position = {left_top.x + grid_size * 0.15, left_top.y + grid_size * 0.15}, force = "neutral"})
 	surface.create_entity({name = rock_raffle[math.random(1, #rock_raffle)], position = {left_top.x + grid_size * 0.15, left_top.y + grid_size * 0.85}, force = "neutral"})
 	surface.create_entity({name = rock_raffle[math.random(1, #rock_raffle)], position = {left_top.x + grid_size * 0.85, left_top.y + grid_size * 0.15}, force = "neutral"})
@@ -235,7 +247,7 @@ room.some_scrap = function(surface, cell_left_top, direction)
 		for y = math.floor(grid_size * 0.15), math.floor(grid_size * 0.85) - 1, 1 do
 			local pos = {left_top.x + x, left_top.y + y}
 			if math.random(1,16) == 1 then
-				surface.create_entity({name = "mineable-wreckage", position = pos, force = "neutral"})
+				surface.create_entity({name = get_scrap(), position = pos, force = "neutral"})
 			end
 		end
 	end
@@ -250,7 +262,7 @@ room.tons_of_scrap = function(surface, cell_left_top, direction)
 			local pos = {left_top.x + x, left_top.y + y}
 			local noise = get_noise("scrap_01", pos, seed)
 			if math.random(1,2) == 1 and noise > 0 then
-				surface.create_entity({name = "mineable-wreckage", position = pos, force = "neutral"})
+				surface.create_entity({name = get_scrap(), position = pos, force = "neutral"})
 			end
 		end
 	end
@@ -277,6 +289,22 @@ room.pond = function(surface, cell_left_top, direction)
 	end
 end
 
+room.maze = function(surface, cell_left_top, direction)
+	local tree = tree_raffle[math.random(1, #tree_raffle)]
+	local left_top = {x = cell_left_top.x * grid_size, y = cell_left_top.y * grid_size}		
+	create_maze(
+		surface,
+		{x = left_top.x + grid_size * 0.5, y = left_top.y + grid_size * 0.5},
+		math.floor(grid_size * 0.25),
+		3,
+		"stone-wall",
+		"enemy",
+		true
+	)
+	
+	surface.spill_item_stack({x = left_top.x + grid_size * 0.5, y = left_top.y + grid_size * 0.5}, get_loot_item_stack(), true, nil, true)
+end
+
 local room_weights = {		
 	{func = room.worms, weight = 12},
 	{func = room.nests, weight = 8},
@@ -284,7 +312,7 @@ local room_weights = {
 	{func = room.tons_of_trees, weight = 15},	
 	
 	{func = room.tons_of_rocks, weight = 35},	
-	{func = room.quad_rocks, weight = 8},
+	{func = room.quad_rocks, weight = 7},
 	{func = room.three_rocks, weight = 3},
 	{func = room.single_rock, weight = 8},
 	
@@ -297,8 +325,9 @@ local room_weights = {
 	{func = room.pond, weight = 8},
 	
 	{func = room.loot_crate, weight = 9},
-	{func = room.tree_ring, weight = 9}
+	{func = room.tree_ring, weight = 9},
 	
+	{func = room.maze, weight = 4},
 }
 
 local room_shuffle = {}

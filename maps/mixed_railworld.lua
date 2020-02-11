@@ -2,7 +2,6 @@ local event = require 'utils.event'
 
 require "modules.spawners_contain_acid"
 require "modules.spawners_contain_biters"
-require "modules.dynamic_landfill"
 require "modules.dangerous_goods"
 require "modules.satellite_score"
 require "modules.splice_double"
@@ -16,7 +15,7 @@ local function init_surface()
 	map_gen_settings.starting_area = "2.5"
 	map_gen_settings.cliff_settings = {cliff_elevation_interval = 40, cliff_elevation_0 = 40}		
 	map_gen_settings.autoplace_controls = {
-		["coal"] = {frequency = "10", size = "7", richness = "1"},
+		["coal"] = {frequency = "8", size = "4", richness = "1"},
 		["stone"] = {frequency = "0.3", size = "2.0", richness = "0.5"},
 		["iron-ore"] = {frequency = "0.3", size = "2.0", richness = "0.5"},
 		["copper-ore"] = {frequency = "0.3", size = "2.0", richness = "0.5"},
@@ -25,9 +24,6 @@ local function init_surface()
 		["trees"] = {frequency = "0.5", size = "0.75", richness = "1"},
 		["enemy-base"] = {frequency = "1", size = "1", richness = "1"}
 	}
-	
-	game.map_settings.enemy_expansion.enabled = false
-	game.difficulty_settings.technology_price_multiplier = 2
 		
 	local surface = game.create_surface("mixed_railworld", map_gen_settings)				
 	surface.request_to_generate_chunks({x = 0, y = 0}, 1)
@@ -62,6 +58,12 @@ local function on_chunk_generated(event)
 	end
 end
 
+local function on_init()
+	game.difficulty_settings.technology_price_multiplier = 2
+	game.map_settings.enemy_expansion.enabled = false
+end
+
+event.on_init(on_init)
 event.add(defines.events.on_chunk_generated, on_chunk_generated)
 event.add(defines.events.on_player_joined_game, on_player_joined_game)
 

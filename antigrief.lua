@@ -5,7 +5,9 @@
 
 local event = require 'utils.event'
 local session = require 'utils.session_data'
+local Server = require 'utils.server'
 
+--[[
 local function create_admin_button(player)
 	if player.gui.top["admin_button"] then return end
 	local b = player.gui.top.add({type = "button", caption = "Admin", name = "admin_button", tooltip = "Use your powers wisely"})
@@ -36,6 +38,7 @@ local function on_player_demoted(event)
 	if player.gui.top["admin_button"] then player.gui.top["admin_button"].destroy() end
 	if player.gui.left["admin_panel"] then player.gui.left["admin_panel"].destroy() end
 end
+]]
 
 local function on_marked_for_deconstruction(event)
 	local tracker = session.get_session_table()
@@ -71,7 +74,7 @@ local function on_player_ammo_inventory_changed(event)
 		if nukes > 0 then
 			player.surface.spill_item_stack(player.position, {name = "atomic-bomb", count = nukes}, false)
 			player.print("You have not grown accustomed to this technology yet.", {r=0.22, g=0.99, b=0.99})
-			server_commands.to_discord_bold(table.concat{'[Nuke] ' .. player.name .. ' tried to equip nukes but was not trusted.'})
+			Server.to_discord_bold(table.concat{'[Nuke] ' .. player.name .. ' tried to equip nukes but was not trusted.'})
 			player.character.health = 0
 		end
 	end
@@ -228,7 +231,7 @@ local function on_gui_opened(event)
 	if corpse_owner.force.name ~= player.force.name then return end
 	if player.name ~= corpse_owner.name then
 		game.print(player.name .. " is looting " .. corpse_owner.name .. "´s body.", { r=0.85, g=0.85, b=0.85})
-		server_commands.to_discord_bold(table.concat{'[Corpse] ' .. player.name .. " is looting " .. corpse_owner.name .. "´s body."})
+		Server.to_discord_bold(table.concat{'[Corpse] ' .. player.name .. " is looting " .. corpse_owner.name .. "´s body."})
 	end
 end
 
@@ -240,7 +243,7 @@ local function on_pre_player_mined_item(event)
 	if corpse_owner.force.name ~= player.force.name then return end
 	if player.name ~= corpse_owner.name then
 		game.print(player.name .. " has looted " .. corpse_owner.name .. "´s body.", { r=0.85, g=0.85, b=0.85})
-		server_commands.to_discord_bold(table.concat{'[Corpse] ' .. player.name .. " has looted " .. corpse_owner.name .. "´s body."})
+		Server.to_discord_bold(table.concat{'[Corpse] ' .. player.name .. " has looted " .. corpse_owner.name .. "´s body."})
 	end
 end
 
@@ -251,8 +254,8 @@ event.add(defines.events.on_gui_opened, on_gui_opened)
 event.add(defines.events.on_marked_for_deconstruction, on_marked_for_deconstruction)
 event.add(defines.events.on_player_ammo_inventory_changed, on_player_ammo_inventory_changed)
 event.add(defines.events.on_player_built_tile, on_player_built_tile)
-event.add(defines.events.on_player_demoted, on_player_demoted)
-event.add(defines.events.on_player_joined_game, on_player_joined_game)
+--event.add(defines.events.on_player_demoted, on_player_demoted)
+--event.add(defines.events.on_player_joined_game, on_player_joined_game)
 event.add(defines.events.on_pre_player_mined_item, on_pre_player_mined_item)
-event.add(defines.events.on_player_promoted, on_player_promoted)
+--event.add(defines.events.on_player_promoted, on_player_promoted)
 event.add(defines.events.on_player_used_capsule, on_player_used_capsule)

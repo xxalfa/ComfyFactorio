@@ -23,7 +23,7 @@ local function create_particles(surface, name, position, amount)
 		local m = math_random(12, 18)
 		local m2 = m * 0.005
 		
-		surface.create_entity({
+		surface.create_particle({
 			name = name,
 			position = position,
 			frame_speed = 1,
@@ -81,7 +81,7 @@ local function kill_random_tree(surface)
 end
 
 local function tick(event)
-	local r = 16
+	local r = 48
 	if global.difficulty_vote_index then r = difficulties_votes[global.difficulty_vote_index] end
 	if math_random(1, r) ~= 1 then return end
 	local surface = game.players[1].surface	

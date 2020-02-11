@@ -6,9 +6,9 @@ local bouncy_shells = require 'maps.fish_defender.bouncy_shells'
 local boss_biter = require "maps.fish_defender.boss_biters"
 
 local function protect_market(event)
-	if event.entity.name ~= "market" then return false end
+	if event.entity.name ~= "market" then return end
 	if event.cause then
-		if event.cause.force.name == "enemy" then return false end
+		if event.cause.force.name == "enemy" then return end
 	end
 	event.entity.health = event.entity.health + event.final_damage_amount
 	return true
@@ -22,11 +22,11 @@ local function on_entity_damaged(event)
 	
 	if not event.cause then return end
 	
-	if event.cause.unit_number then
-		if global.boss_biters[event.cause.unit_number] then
-			boss_biter.damaged_entity(event) 
-		end
-	end
+	--if event.cause.unit_number then
+	--	if global.boss_biters[event.cause.unit_number] then
+	--		boss_biter.damaged_entity(event) 
+	--	end
+	--end
 	
 	if event.cause.name ~= "character" then return end
 	

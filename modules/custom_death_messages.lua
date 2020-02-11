@@ -33,7 +33,7 @@ local function on_player_died(event)
 	if event.cause then
 		local cause = event.cause	
 		if not cause.name then
-			game.print(player.name .. tag .. " was killed." .. str, message_color)
+			game.print(player.name .. tag .. " was killed.", message_color)
 			return
 		end
 		if messages[cause.name] then
@@ -44,11 +44,15 @@ local function on_player_died(event)
 		if cause.name == "character" then
 			if not player.name then return end
 			if not cause.player.name then return end
-			game.print(player.name .. tag .. " was killed by " .. cause.player.name " " .. cause.player.tag .. ".", message_color)							
+			if cause.player.tag then
+				game.print(player.name .. tag .. " was killed by " .. cause.player.name .. " " .. cause.player.tag .. ".", message_color)
+			else
+				game.print(player.name .. tag .. " was killed by " .. cause.player.name .. ".", message_color)
+			end								
 			return
 		end
 		
-		if cause.name == "tank" then
+		if cause.type == "car" then
 			local driver = cause.get_driver()
 			if driver.player then				
 				game.print(player.name .. tag .. " was killed by " .. driver.player.name .. " " .. player.tag .. ".", message_color)

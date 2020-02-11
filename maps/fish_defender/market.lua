@@ -6,6 +6,7 @@ require 'maps.fish_defender.vehicle_nanobots'
 require 'maps.fish_defender.laser_pointer'
 
 local event = require 'utils.event'
+local Server = require 'utils.server'
 
 local slot_upgrade_offers = {
 		[1] = {"gun-turret", "gun turret"},
@@ -26,6 +27,12 @@ local special_descriptions = {
 	["vehicle-nanobots"] = "Unlock Vehicle Nanobots - Vehicles repair rapidly while driving.",
 	["laser-pointer"] = "Unlock Laser Pointer - The biters are on a quest to slay the red (artillery) dot."
 }
+
+function place_fish_market(surface, position)
+	local market = surface.create_entity({name = "market", position = position, force = "player"})
+	market.minable = false
+	return market
+end
 
 local function refresh_market_offers()
 	if not global.market then return end
@@ -125,12 +132,14 @@ local function refresh_market_offers()
 	if not global.vehicle_nanobots_unlocked then 
 		global.market.add_market_item({price = {{"coin", 15000}}, offer = {type = 'nothing', effect_description = special_descriptions["vehicle-nanobots"]}})
 	end
+	--[[
 	if not global.crumbly_walls_unlocked then 
 		global.market.add_market_item({price = {{"coin", 35000}}, offer = {type = 'nothing', effect_description = special_descriptions["crumbly-walls"]}})
-	end
+	end	
 	if not global.ultra_mines_unlocked then 
 		global.market.add_market_item({price = {{"coin", 45000}}, offer = {type = 'nothing', effect_description = special_descriptions["ultra-mines"]}})
 	end
+	]]
 	if not global.laser_pointer_unlocked then 
 		global.market.add_market_item({price = {{"coin", 65000}}, offer = {type = 'nothing', effect_description = special_descriptions["laser-pointer"]}})
 	end
@@ -160,7 +169,7 @@ local function slot_upgrade(player, offer_index)
 				 
 	global.entity_limits[slot_upgrade_offers[offer_index][1]].limit = global.entity_limits[slot_upgrade_offers[offer_index][1]].limit + gain
 	game.print(player.name .. " has bought a " .. slot_upgrade_offers[offer_index][2] .. " slot for " .. price .. " coins!", {r = 0.22, g = 0.77, b = 0.44})
-	server_commands.to_discord_bold(table.concat{player.name .. " has bought a " .. slot_upgrade_offers[offer_index][2] .. " slot for " .. price .. " coins!"})
+	Server.to_discord_bold(table.concat{player.name .. " has bought a " .. slot_upgrade_offers[offer_index][2] .. " slot for " .. price .. " coins!"})
 	refresh_market_offers()
 end
 

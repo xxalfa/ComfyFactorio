@@ -1,6 +1,8 @@
 --destroying and mining rocks yields ore -- load as last module
-
-local event = require 'utils.event'
+local max_spill = 40
+local math_random = math.random
+local math_floor = math.floor
+local math_sqrt = math.sqrt
 
 local rock_yield = {
 	["rock-big"] = 1,
@@ -10,10 +12,10 @@ local rock_yield = {
 
 local rock_mining_chance_weights = {
 	{"iron-ore", 25},
-	{"copper-ore",18},
-	{"coal",14},
+	{"copper-ore",17},
+	{"coal",13},
 	{"stone",10},
-	{"uranium-ore",3}
+	{"uranium-ore",2}
 }
 
 local texts = {
@@ -39,9 +41,7 @@ for _, t in pairs (rock_mining_chance_weights) do
 	end			
 end
 
-local function create_particles(surface, name, position, amount, cause_position)
-	local math_random = math.random
-	
+local function create_particles(surface, name, position, amount, cause_position)	
 	local direction_mod = (-100 + math_random(0,200)) * 0.0004
 	local direction_mod_2 = (-100 + math_random(0,200)) * 0.0004
 	
@@ -54,7 +54,7 @@ local function create_particles(surface, name, position, amount, cause_position)
 		local m = math_random(4, 10)
 		local m2 = m * 0.005
 		
-		surface.create_entity({
+		surface.create_particle({
 			name = name,
 			position = position,
 			frame_speed = 1,
@@ -69,60 +69,91 @@ local function create_particles(surface, name, position, amount, cause_position)
 end
 
 local function get_amount(entity)
-	local distance_to_center = math.sqrt(entity.position.x^2 + entity.position.y^2)
-	local amount = 50 + (distance_to_center * 0.33)
-	if amount > 150 then amount = 150 end
-	amount = rock_yield[entity.name] * amount
+	local distance_to_center = math_floor(math_sqrt(entity.position.x ^ 2 + entity.position.y ^ 2))
 	
-	if not global.rock_yield_amount_modifier then global.rock_yield_amount_modifier = 1 end
-	amount = amount * global.rock_yield_amount_modifier
+	local distance_modifier = 0.25
+	local base_amount = 35
+	local maximum_amount = 100
+	if global.rocks_yield_ore_distance_modifier then distance_modifier = global.rocks_yield_ore_distance_modifier end
+	if global.rocks_yield_ore_base_amount then base_amount = global.rocks_yield_ore_base_amount end
+	if global.rocks_yield_ore_maximum_amount then maximum_amount = global.rocks_yield_ore_maximum_amount end
 	
-	amount = math.random(math.ceil(amount * 0.5), math.ceil(amount * 1.5))		
+	local amount = base_amount + (distance_to_center * distance_modifier)
+	if amount > maximum_amount then amount = maximum_amount end
 	
+	local m = (70 + math_random(0, 60)) * 0.01
+	
+	amount = math_floor(amount * rock_yield[entity.name] * m)
+	if amount < 1 then amount = 1 end
+		
 	return amount
 end
 
 local function on_player_mined_entity(event)
 	local entity = event.entity
 	if not entity.valid then return end
-	if rock_yield[entity.name] then
-		event.buffer.clear()
-		
-		local ore = ore_raffle[math.random(1, #ore_raffle)]
-		
-		local amount = get_amount(entity)
-		
-		local amount_to_spill = math.ceil(amount * 0.5)
-		local amount_to_insert = math.floor(amount * 0.5)
-		
-		local player = game.players[event.player_index]
-		local inserted_count = player.insert({name = ore, count = amount_to_insert})
-		local amount_to_spill = amount_to_spill + (amount_to_insert - inserted_count)
-				
-		entity.surface.spill_item_stack(entity.position,{name = ore, count = amount_to_spill}, true)
-		
-		--entity.surface.create_entity({name = "flying-text", position = entity.position, text = amount .. " " .. texts[ore][1], color = texts[ore][2]})
-		entity.surface.create_entity({name = "flying-text", position = entity.position, text = "+" .. amount .. " [img=item/" .. ore .. "]", color = {r = 200, g = 160, b = 30}})
-		
-		create_particles(entity.surface, particles[ore], entity.position, 64, game.players[event.player_index].position)
-		
+	if not rock_yield[entity.name] then return end
+	
+	event.buffer.clear()
+	
+	local ore = ore_raffle[math_random(1, #ore_raffle)]	
+	local player = game.players[event.player_index]
+	--[[
+	local inventory = player.get_inventory(defines.inventory.character_main)
+	if not inventory.can_insert({name = ore, count = 1}) then
+		local e = entity.surface.create_entity({name = entity.name, position = entity.position})
+		e.health = entity.health
+		player.print("Inventory full.", {200, 200, 200})
+		return
 	end
+	]]		
+	local count = get_amount(entity)
+	local position = {x = entity.position.x, y = entity.position.y}
+	
+	player.surface.create_entity({name = "flying-text", position = position, text = "+" .. count .. " [img=item/" .. ore .. "]", color = {r = 200, g = 160, b = 30}})
+	create_particles(player.surface, particles[ore], position, 64, {x = player.position.x, y = player.position.y})
+	
+	entity.destroy()
+	
+	if count > max_spill then
+		player.surface.spill_item_stack(position,{name = ore, count = max_spill}, true)
+		count = count - max_spill
+		local inserted_count = player.insert({name = ore, count = count})
+		count = count - inserted_count
+		if count > 0 then
+			player.surface.spill_item_stack(position,{name = ore, count = count}, true)
+		end
+	else			
+		player.surface.spill_item_stack(position,{name = ore, count = count}, true)
+	end	
 end
 
 local function on_entity_died(event)	
 	local entity = event.entity
-	if not entity.valid then return end
-	if rock_yield[entity.name] then
-		local surface = entity.surface
-		local amount = get_amount(entity)
-		amount = math.ceil(amount * 0.1)
-		local ore = ore_raffle[math.random(1, #ore_raffle)]
-		local pos = {entity.position.x, entity.position.y}
-		entity.destroy()
-		surface.spill_item_stack(pos,{name = ore, count = amount}, true)
-		create_particles(surface, particles[ore], pos, 16)
-	end
+	if not entity.valid then return end	
+	if not rock_yield[entity.name] then return end
+	
+	local surface = entity.surface
+	local ore = ore_raffle[math_random(1, #ore_raffle)]
+	local pos = {entity.position.x, entity.position.y}		
+	create_particles(surface, particles[ore], pos, 16, false)
+	
+	if event.cause then
+		if event.cause.valid then
+			if event.cause.force.index == 2 or event.cause.force.index == 3 then
+				entity.destroy()
+				return
+			end
+		end
+	end		
+		
+	--local amount = get_amount(entity)
+	--amount = math.ceil(amount * 0.1)
+	--if amount > 12 then amount = 12 end
+	entity.destroy()		
+	surface.spill_item_stack(pos,{name = ore, count = math_random(8,12)}, true)
 end
 
+local event = require 'utils.event'
 event.add(defines.events.on_entity_died, on_entity_died)	
 event.add(defines.events.on_player_mined_entity, on_player_mined_entity)

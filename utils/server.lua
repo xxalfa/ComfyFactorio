@@ -3,7 +3,6 @@ local Task = require 'utils.task'
 local Global = require 'utils.global'
 local Event = require 'utils.event'
 local Game = require 'utils.game'
-local Timestamp = require 'utils.timestamp'
 local Print = require('utils.print_override')
 
 local serialize = serpent.serialize
@@ -17,6 +16,7 @@ local serialize_options = {sparse = true, compact = true}
 local Public = {}
 
 local server_time = {secs = nil, tick = 0}
+local requests = {}
 
 Global.register(
     {
@@ -33,6 +33,8 @@ local discord_tag = '[DISCORD]'
 local discord_raw_tag = '[DISCORD-RAW]'
 local discord_bold_tag = '[DISCORD-BOLD]'
 local discord_admin_tag = '[DISCORD-ADMIN]'
+local discord_banned_tag = '[DISCORD-BANNED]'
+local discord_banned_embed_tag = '[DISCORD-BANNED-EMBED]'
 local discord_admin_raw_tag = '[DISCORD-ADMIN-RAW]'
 local discord_embed_tag = '[DISCORD-EMBED]'
 local discord_embed_raw_tag = '[DISCORD-EMBED-RAW]'
@@ -95,6 +97,12 @@ function Public.to_admin(message)
     raw_print(discord_admin_tag .. message)
 end
 
+--- Sends a message to the linked banend discord channel. The message is sanitized of markdown server side.
+-- @param  message<string> message to send.
+function Public.to_banned(message)
+    raw_print(discord_banned_tag .. message)
+end
+
 --- Sends a message to the linked admin discord channel. The message is not sanitized of markdown.
 -- @param  message<string> message to send.
 function Public.to_admin_raw(message)
@@ -117,6 +125,12 @@ end
 -- @param  message<string> the content of the embed.
 function Public.to_admin_embed(message)
     raw_print(discord_admin_embed_tag .. message)
+end
+
+--- Sends a embed message to the linked banned discord channel. The message is sanitized of markdown server side.
+-- @param  message<string> the content of the embed.
+function Public.to_banned_embed(message)
+    raw_print(discord_banned_embed_tag .. message)
 end
 
 --- Sends a embed message to the linked admin discord channel. The message is not sanitized of markdown.
@@ -716,7 +730,7 @@ Event.add(
             message[#message + 1] = ' was killed by '
 
             local name = cause.name
-            if name == 'character' then
+            if name == 'character' and cause.player then
                 name = cause.player.name
             end
 

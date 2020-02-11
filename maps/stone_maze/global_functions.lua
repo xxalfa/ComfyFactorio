@@ -50,6 +50,12 @@ function get_ammo()
 	end
 end
 
+local special_scraps = {"crash-site-assembling-machine-1-broken", "crash-site-assembling-machine-2-broken", "crash-site-lab-broken", "medium-ship-wreck"}
+function get_scrap()
+	if math.random(1, 128) == 1 then return special_scraps[math.random(1, 4)] end
+	return "mineable-wreckage"
+end
+
 function spawn_enemy_gun_turret(surface, position)
 	if not surface.can_place_entity({name = "gun-turret", position = position}) then return end
 	local e = surface.create_entity({name = "gun-turret", position = position, force = "enemy"})
@@ -219,6 +225,7 @@ end
 function spawn_market(surface, position)
 	local market = surface.create_entity({name = "market", position = position, force = "neutral"})
 	market.destructible = false
+	--[[
 	market.add_market_item({price = {{"coin", 5}}, offer = {type = 'give-item', item = 'iron-ore', count = 50}})
 	market.add_market_item({price = {{"coin", 5}}, offer = {type = 'give-item', item = 'copper-ore', count = 50}})
 	market.add_market_item({price = {{"coin", 5}}, offer = {type = 'give-item', item = 'stone', count = 50}})
@@ -228,12 +235,13 @@ function spawn_market(surface, position)
 	market.add_market_item({price = {{'copper-ore', 50}}, offer = {type = 'give-item', item = "coin", count = 5}})
 	market.add_market_item({price = {{'stone', 50}}, offer = {type = 'give-item', item = "coin", count = 5}})
 	market.add_market_item({price = {{'coal', 50}}, offer = {type = 'give-item', item = "coin", count = 5}})
-	market.add_market_item({price = {{"uranium-ore", 25}}, offer = {type = 'give-item', item = 'coin', count = 5}})
-	
+	market.add_market_item({price = {{"uranium-ore", 25}}, offer = {type = 'give-item', item = 'coin', count = 5}})	
 	market.add_market_item({price = {{'coin', 1}}, offer = {type = 'give-item', item = "wood", count = 50}})
-	market.add_market_item({price = {{'coin', 1}}, offer = {type = 'give-item', item = "raw-fish", count = 1}})
-	market.add_market_item({price = {{'coin', 8}}, offer = {type = 'give-item', item = "grenade", count = 1}})
+	]]
+	
+	market.add_market_item({price = {{'coin', 2}}, offer = {type = 'give-item', item = "raw-fish", count = 1}})
+	market.add_market_item({price = {{'coin', 10}}, offer = {type = 'give-item', item = "grenade", count = 1}})
 	market.add_market_item({price = {{'coin', 1}}, offer = {type = 'give-item', item = "firearm-magazine", count = 1}})
 	market.add_market_item({price = {{'coin', 16}}, offer = {type = 'give-item', item = "submachine-gun", count = 1}})
-	market.add_market_item({price = {{'coin', 32}}, offer = {type = 'give-item', item = "car", count = 1}})
+	market.add_market_item({price = {{'coin', 64}}, offer = {type = 'give-item', item = "car", count = 1}})
 end

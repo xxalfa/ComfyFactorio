@@ -1,28 +1,25 @@
---BITER BATTLES CONFIG FILE--
+--BITER BATTLES CONFIG--
 
-bb_config = {
-	--GENERAL SETTINGS
-	["blueprint_library_importing"] = false,		--Allow the importing of blueprints from the blueprint library?
-	["blueprint_string_importing"] = false,		--Allow the importing of blueprints via blueprint strings?
+local bb_config = {
+	--Optional custom team names, can also be modified via "Team Manager"
+	["north_side_team_name"] = "Team North",
+	["south_side_team_name"] = "Team South",
 
-	--MAP PREGENERATION
-	["map_pregeneration_radius"] = 31,	 		--Radius in chunks to pregenerate at the start of the map.
+	--MAP PREGENERATION--
+	["map_pregeneration_radius"] = 0,	 		--3 horizontal radiuses in chunks to pregenerate at the start of the map.
+	["on_init_pregen"] = false,	 					--Generate some chunks on_init?
 	["fast_pregen"] = false,	 						--Force fast pregeneration.
-	
-	--TEAM SETTINGS
-	["north_side_team_name"] = "North",		--Name in the GUI of Team North.
-	["south_side_team_name"] = "South",		--Name in the GUI of Team South.
-	["team_balancing"] = true,						--Should players only be able to join a team that has less or equal members than the opposing team?
-	["only_admins_vote"] = false,					--Are only admins able to vote on the global difficulty?
-	
-	--TERRAIN OPTIONS
-	["border_river_width"] = 29,						--Approximate width of the horizontal impassable river seperating the teams. (values up to 100)
+
+	--TERRAIN OPTIONS--
+	["border_river_width"] = 36,						--Approximate width of the horizontal impassable river seperating the teams. (values up to 100)
 	["builders_area"] = true,							--Grant each side a peaceful direction with no nests and biters?
 	["random_scrap"] = true,							--Generate harvestable scrap around worms randomly?
-	
-	--BITER SETTINGS
-	["max_active_biters"] = 2500,					--Maximum total amount of attacking units per side.
+
+	--BITER SETTINGS--
+	["max_active_biters"] = 2000,					--Maximum total amount of attacking units per side.
 	["max_group_size"] = 256,						--Maximum unit group size.
-	["biter_timeout"] = 54000,						--Time it takes in ticks for an attacking unit to be deleted. This prevents perma stuck units.	
-	["bitera_area_distance"] = 416					--Distance to the biter area.
+	["biter_timeout"] = 162000,						--Time it takes in ticks for an attacking unit to be deleted. This prevents perma stuck units.
+	["bitera_area_distance"] = 432					--Distance to the biter area.
 }
+
+return bb_config

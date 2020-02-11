@@ -1,11 +1,15 @@
 --optionals
 require "modules.satellite_score"
-require "modules.dynamic_landfill"
 require "modules.dangerous_goods"
 require "modules.spawners_contain_biters"
-require "modules.manual_mining_booster"
+--require "modules.manual_mining_booster"
+require "modules.rpg"
+require "modules.hunger"
+require "modules.no_turrets"
 
 --essentials
+require "functions.maze"
+require "functions.basic_markets"
 require "modules.biters_yield_coins"
 require "modules.rocks_yield_ore"
 require "modules.mineable_wreckage_yields_scrap"

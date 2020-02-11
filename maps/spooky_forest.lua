@@ -1,8 +1,8 @@
 -- spooky forest -- by mewmew --
 
-require "modules.hunger"
-require "modules.fish_respawner"
-global.fish_respawner_water_tiles_per_fish = 16
+require "modules.trees_randomly_die"
+--require "modules.fish_respawner"
+--global.fish_respawner_water_tiles_per_fish = 16
 
 require "modules.satellite_score"
 require "modules.explosives_are_explosive"
@@ -14,7 +14,8 @@ require "modules.biters_avoid_damage"
 require "modules.biters_double_damage"
 require "modules.spawners_contain_biters"
 require "modules.rocks_broken_paint_tiles"
-require "modules.rocks_yield_ore"
+require "modules.rpg"
+require "modules.hunger"
 
 local shapes = require "tools.shapes"
 local event = require 'utils.event'
@@ -391,6 +392,7 @@ local ore_spawn_raffle = {
 	}
 
 local function on_entity_died(event)
+	if not event.entity.valid then return end
 	local surface = event.entity.surface
 	
 	if event.entity.name == "biter-spawner" or event.entity.name == "spitter-spawner" then		
@@ -407,7 +409,7 @@ local function on_entity_died(event)
 		end
 	end
 		
-	if event.entity.type == "unit" and math_random(1, 256) == 1 then
+	if event.entity.type == "unit" and math_random(1, 8) == 1 then
 		surface.spill_item_stack(event.entity.position,{name = "raw-fish", count = 1}, true)
 	end
 		
@@ -435,18 +437,18 @@ local function on_player_joined_game(event)
 		game.create_surface("spooky_forest", map_gen_settings)							
 		local surface = game.surfaces["spooky_forest"]
 		surface.daytime = 0.5
-		--surface.freeze_daytime = 1
+		surface.freeze_daytime = 1
 		game.forces["player"].set_spawn_position({0, 0}, surface)
 		
 		game.map_settings.enemy_expansion.enabled = true
-		game.map_settings.enemy_evolution.destroy_factor = 0.0016
+		game.map_settings.enemy_evolution.destroy_factor = 0.0025
 		game.map_settings.enemy_evolution.time_factor = 0
 		game.map_settings.enemy_evolution.pollution_factor = 0
 		
 		local turret_positions = {{6, 6}, {-5, -5}, {-5, 6}, {6, -5}}
 		for _, pos in pairs(turret_positions) do
 			local turret = surface.create_entity({name = "gun-turret", position = pos, force = "player"})
-			turret.insert({name = "firearm-magazine", count = 32})
+			turret.insert({name = "firearm-magazine", count = 64})
 		end
 		
 		local radius = 320
@@ -460,10 +462,9 @@ local function on_player_joined_game(event)
 		player.insert({name = "iron-plate", count = 64})
 		player.insert({name = "grenade", count = 3})
 		player.insert({name = "raw-fish", count = 5})
-		player.insert({name = "land-mine", count = 5})
+		player.insert({name = "land-mine", count = 2})
 		player.insert({name = "light-armor", count = 1})
-		player.insert({name = "firearm-magazine", count = 128})
-		if global.show_floating_killscore then global.show_floating_killscore[player.name] = false end
+		player.insert({name = "firearm-magazine", count = 64})
 	end
 	
 	local surface = game.surfaces["spooky_forest"]
@@ -636,3 +637,6 @@ event.add(defines.events.on_entity_died, on_entity_died)
 event.add(defines.events.on_chunk_generated, on_chunk_generated)
 event.add(defines.events.on_player_changed_position, on_player_changed_position)
 event.add(defines.events.on_player_joined_game, on_player_joined_game)
+
+require "modules.rocks_yield_ore"
+global.rocks_yield_ore_base_amount = 100

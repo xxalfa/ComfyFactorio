@@ -4,7 +4,9 @@ local radius = 6
 local targets = {}
 local acid_splashes = {
 	["big-biter"] = "acid-stream-worm-medium",
-	["behemoth-biter"] = "acid-stream-worm-big"
+	["behemoth-biter"] = "acid-stream-worm-big",
+	["big-spitter"] = "acid-stream-worm-medium",
+	["behemoth-spitter"] = "acid-stream-worm-big"
 }
 local acid_lines = {
 	["big-spitter"] = "acid-stream-spitter-medium",
@@ -19,7 +21,7 @@ for x = radius * -1, radius, 1 do
 end
 
 local function acid_nova(event)
-	for _ = 1, math.random(20, 40) do
+	for _ = 1, math.random(16, 32) do
 		local i = math.random(1, #targets)		
 		event.entity.surface.create_entity({	
 			name = acid_splashes[event.entity.name],
@@ -41,12 +43,15 @@ end
 
 local function acid_line(surface, name, source, target)
 	local distance = math.sqrt((source.x - target.x) ^ 2 + (source.y - target.y) ^ 2)
+	
+	if distance > 16 then return false end
+	
 	local modifier = {(target.x - source.x) / distance, (target.y - source.y) / distance}
 	
 	local position = {source.x, source.y}
 		
-	for i = 1, distance * 1.5, 1 do
-		if math_random(1,2) ~= 1 then
+	for i = 1, distance + 4, 1 do
+		if math_random(1,3) == 1 then
 			surface.create_entity({	
 				name = name,
 				position = source,
@@ -59,14 +64,18 @@ local function acid_line(surface, name, source, target)
 		end
 		position = {position[1] + modifier[1], position[2] + modifier[2]}
 	end
+	
+	return true
 end
 
 boss_biter.damaged_entity = function(event)
 	if acid_lines[event.cause.name] then
 		if not global.acid_lines_delay[event.cause.unit_number] then global.acid_lines_delay[event.cause.unit_number] = 0 end
+		
 		if global.acid_lines_delay[event.cause.unit_number] < game.tick then
-			acid_line(event.cause.surface, acid_lines[event.cause.name], event.cause.position, event.entity.position)
-			global.acid_lines_delay[event.cause.unit_number] = game.tick + 120
+			if acid_line(event.cause.surface, acid_lines[event.cause.name], event.cause.position, event.entity.position) then
+				global.acid_lines_delay[event.cause.unit_number] = game.tick + 180
+			end
 		end
 	end
 end
