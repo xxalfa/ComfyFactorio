@@ -827,7 +827,7 @@
 
             if event.cause.name == 'character' then
 
-                global.table_of_players[ driver.player.index ].player_killed = global.table_of_players[ driver.player.index ].player_killed + 1
+                global.table_of_players[ event.cause.player.index ].player_killed = global.table_of_players[ event.cause.player.index ].player_killed + 1
 
                 player_name_of_the_causer = event.cause.player.name
 
@@ -890,8 +890,6 @@
             global.table_of_players[ player.index ].tank.destroy()
 
         end
-
-        if global.table_of_players[ player.index ].tank then global.table_of_players[ player.index ].tank = nil end
 
         if global.table_of_players[ player.index ] then global.table_of_players[ player.index ] = nil end
 
