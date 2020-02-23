@@ -5,10 +5,6 @@
 
     local event = require 'utils.event'
 
-    local table_insert = table.insert
-
-    local math_random = math.random
-
     local map_functions = require 'tools.map_functions'
 
     local simplex_noise = require 'utils.simplex_noise'
@@ -20,6 +16,8 @@
     global.table_of_properties.required_number_of_players = 1
 
     global.table_of_properties.countdown_in_ticks = 54000
+
+    global.table_of_properties.wait_in_seconds = 15
 
     global.table_of_properties.arena_size = 1000
 
@@ -121,11 +119,11 @@
 
         end
 
-        global.entity_tree = tree_raffle[ math_random( 1, #tree_raffle ) ]
+        global.entity_tree = tree_raffle[ math.random( 1, #tree_raffle ) ]
 
-        global.table_of_properties.arena_tree_chance = math_random( 4, 20 )
+        global.table_of_properties.arena_tree_chance = math.random( 4, 20 )
 
-        global.table_of_properties.arena_tree_noise = math_random( 0, 75 ) * 0.01
+        global.table_of_properties.arena_tree_noise = math.random( 0, 75 ) * 0.01
 
         local entity_raffle = {}
 
@@ -141,7 +139,7 @@
 
         end
 
-        global.entity_secret = entity_raffle[ math_random( 1, #entity_raffle ) ]
+        global.entity_secret = entity_raffle[ math.random( 1, #entity_raffle ) ]
 
     end
 
@@ -197,7 +195,7 @@
 
         local table_of_chunks = {}
 
-        for chunk_position in surface.get_chunks() do table_insert( table_of_chunks, { x = chunk_position.x, y = chunk_position.y } ) end
+        for chunk_position in surface.get_chunks() do table.insert( table_of_chunks, { x = chunk_position.x, y = chunk_position.y } ) end
 
         table_of_chunks = shuffle( table_of_chunks )
 
@@ -243,39 +241,39 @@
 
         end
 
-        if math_random( 1, global.table_of_properties.arena_tree_chance ) == 1 and noise_one > global.table_of_properties.arena_tree_noise then
+        if math.random( 1, global.table_of_properties.arena_tree_chance ) == 1 and noise_one > global.table_of_properties.arena_tree_noise then
 
             return surface.create_entity( { name = global.entity_tree, position = tile_position } )
 
         end
 
-        if math_random( 1, 1024 ) ~= 1 then return end
+        if math.random( 1, 1024 ) ~= 1 then return end
 
-        if math_random( 1, 16 ) == 1 and surface.can_place_entity( { name = global.entity_secret, position = tile_position, force = 'enemy' } ) then
+        if math.random( 1, 16 ) == 1 and surface.can_place_entity( { name = global.entity_secret, position = tile_position, force = 'enemy' } ) then
 
             return surface.create_entity( { name = global.entity_secret, position = tile_position, force = 'enemy' } )
 
         end
 
-        if math_random( 1, 64 ) == 1 and surface.can_place_entity( { name = 'big-worm-turret', position = tile_position, force = 'enemy' } ) then
+        if math.random( 1, 64 ) == 1 and surface.can_place_entity( { name = 'big-worm-turret', position = tile_position, force = 'enemy' } ) then
 
             return surface.create_entity( { name = 'big-worm-turret', position = tile_position, force = 'enemy' } )
 
         end
 
-        if math_random( 1, 32 ) == 1 and surface.can_place_entity( { name = 'medium-worm-turret', position = tile_position, force = 'enemy' } ) then
+        if math.random( 1, 32 ) == 1 and surface.can_place_entity( { name = 'medium-worm-turret', position = tile_position, force = 'enemy' } ) then
 
             return surface.create_entity( { name = 'medium-worm-turret', position = tile_position, force = 'enemy' } )
 
         end
 
-        if math_random( 1, 512 ) == 1 and  surface.can_place_entity( { name = 'behemoth-biter', position = tile_position, force = 'enemy' } ) then
+        if math.random( 1, 512 ) == 1 and  surface.can_place_entity( { name = 'behemoth-biter', position = tile_position, force = 'enemy' } ) then
 
             return surface.create_entity( { name = 'behemoth-biter', position = tile_position, force = 'enemy' } )
 
         end
 
-        if math_random( 1, 64 ) == 1 and surface.can_place_entity( { name = 'big-biter', position = tile_position, force = 'enemy' } ) then
+        if math.random( 1, 64 ) == 1 and surface.can_place_entity( { name = 'big-biter', position = tile_position, force = 'enemy' } ) then
 
             return surface.create_entity( { name = 'big-biter', position = tile_position, force = 'enemy' } )
 
@@ -463,7 +461,7 @@
 
         entity.insert( { name = 'wood', count = 50 } )
 
-        entity.insert( { name = 'cannon-shell', count = 50 } )
+        entity.insert( { name = 'cannon-shell', count = 200 } )
 
         entity.set_driver( player )
 
@@ -493,11 +491,11 @@
 
         game.surfaces.nauvis.map_gen_settings = { width = 10, height = 10 }
 
-        game.create_surface( 'tank_battles', { width = 10, height = 10 } )
+        game.create_surface( 'tank_battles', { width = 1, height = 1 } )
 
         initialize_permissions()
 
-        execute_on_tick( 60, draw_circle_lobby, { game.surfaces.nauvis, 14, { x = 0, y = 0 } } )
+        execute_on_tick( game.tick + 60, draw_circle_lobby, { game.surfaces.nauvis, 14, { x = 0, y = 0 } } )
 
         local half_arena_size = global.table_of_properties.arena_size / 2
 
@@ -561,13 +559,15 @@
 
                         player.force = game.forces.force_spectator
 
-                        player.character.destructible = false
+                        if player.character then player.character.destructible = false end
 
                         if surface.is_chunk_generated( position ) then player.teleport( surface.find_non_colliding_position( 'character', position, 9, 0.5 ), surface ) else player.teleport( position, surface ) end
 
                         draw_gui_player_scoreboard( player )
 
                     end
+
+                    game.reset_time_played()
 
                     global.table_of_properties.game_stage = 'lobby'
 
@@ -589,11 +589,11 @@
 
                         player.force = game.forces[ 'force_player_' .. player.index ]
 
-                        player.character.destructible = true
+                        if player.character then player.character.destructible = true end
 
-                        player.character.disable_flashlight()
+                        if player.character then player.character.disable_flashlight() end
 
-                        player.insert( { name = 'light-armor', count = 1 } )
+                        player.insert( { name = 'modular-armor', count = 1 } )
 
                         player.insert( { name = 'raw-fish', count = 10 } )
 
@@ -703,7 +703,15 @@
 
             if global.table_of_properties.game_stage == 'lobby' then
 
-                global.table_of_properties.game_stage = 'regenerate_the_customize_surface'
+                if #game.connected_players >= global.table_of_properties.required_number_of_players and global.table_of_properties.wait_in_seconds > 0 then
+
+                    if global.table_of_properties.wait_in_seconds % 10 == 0 then game.print( 'The round starts in ' .. global.table_of_properties.wait_in_seconds .. ' seconds.' ) end
+
+                    global.table_of_properties.wait_in_seconds = global.table_of_properties.wait_in_seconds - 1
+
+                end
+
+                if global.table_of_properties.wait_in_seconds == 0 then global.table_of_properties.game_stage = 'regenerate_the_customize_surface' end
 
             end
 
@@ -755,7 +763,7 @@
 
         player.force = game.forces.force_spectator
 
-        player.character.destructible = false
+        if player.character then player.character.destructible = false end
 
         player.minimap_enabled = false
 
@@ -779,7 +787,7 @@
 
         player.force = game.forces.force_spectator
 
-        player.character.destructible = false
+        if player.character then player.character.destructible = false end
 
         local surface = game.surfaces.nauvis
 
@@ -798,16 +806,6 @@
         player.ticks_to_respawn = 180
 
         global.table_of_players[ player.index ].in_battle = false
-
-        local table_of_entities = player.surface.find_entities_filtered( { name = 'character-corpse' } )
-
-        for _, entity in pairs( table_of_entities ) do
-
-            entity.clear_items_inside()
-
-            entity.destroy()
-
-        end
 
         if global.table_of_players[ player.index ].tank ~= nil and global.table_of_players[ player.index ].tank.valid then
 
@@ -879,7 +877,7 @@
 
         local player = game.players[ event.player_index ]
 
-        if game.forces[ 'force_player_' .. player.index ] then game.forces[ 'force_player_' .. player.index ] = nil end
+        game.merge_forces( 'force_player_' .. player.index, 'neutral' )
 
         if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
 
@@ -901,7 +899,7 @@
 
         if event.surface.name == 'nauvis' then return end
 
-        if not global.table_of_properties.noise_seed then global.table_of_properties.noise_seed = math_random( 1, 2097152 ) end
+        if not global.table_of_properties.noise_seed then global.table_of_properties.noise_seed = math.random( 1, 2097152 ) end
 
         local chunk_position = { x = event.area.left_top.x, y = event.area.left_top.y }
 
@@ -934,6 +932,8 @@
     end
 
     event.add( defines.events.on_marked_for_deconstruction, on_marked_for_deconstruction )
+
+    require 'maps.tank_conquest.module_player_damage'
 
     require 'maps.tank_conquest.module_loot_boxes'
 

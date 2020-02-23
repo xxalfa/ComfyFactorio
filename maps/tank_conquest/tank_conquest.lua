@@ -913,14 +913,6 @@
 
     local function on_tick( event )
 
-        if game.tick % 30 == 0 and global.table_of_damages ~= nil then
-
-            for _, item in pairs( global.table_of_damages ) do item.surface.create_entity( { name = 'flying-text', position = item.position, text = math.ceil( item.damage ), color = global.table_of_colors.damage } ) end
-
-            global.table_of_damages = nil
-
-        end
-
         if game.tick % 60 == 0 then
 
             if global.table_of_properties.game_stage == 'ongoing_game' then
@@ -1333,26 +1325,6 @@
 
     event.add( defines.events.on_console_chat, on_console_chat )
 
-    local function on_entity_damaged( event )
-
-        if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
-
-        if event.entity.name == 'wooden-chest' then return end
-
-        if not event.entity.unit_number then return end
-
-        if event.final_damage_amount < 1 then return end
-
-        if global.table_of_damages == nil then global.table_of_damages = {} end
-
-        if global.table_of_damages[ event.entity.unit_number ] == nil then global.table_of_damages[ event.entity.unit_number ] = { surface = event.entity.surface, position = event.entity.position, damage = 0 } end
-
-        global.table_of_damages[ event.entity.unit_number ].damage = global.table_of_damages[ event.entity.unit_number ].damage + event.final_damage_amount
-
-    end
-
-    event.add( defines.events.on_entity_damaged, on_entity_damaged )
-
     local function on_player_changed_position( event )
 
         if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
@@ -1620,6 +1592,8 @@
         end
 
     end
+
+    require 'maps.tank_conquest.module_player_damage'
 
     require 'maps.tank_conquest.module_loot_boxes'
 

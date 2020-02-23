@@ -75,7 +75,7 @@
 
         element_label.style.top_padding = 3
 
-        element_label.style.minimal_width = 170
+        element_label.style.minimal_width = 180
 
         element_label.style.font = 'compi'
 
