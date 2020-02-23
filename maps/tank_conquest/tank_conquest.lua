@@ -23,7 +23,7 @@
 
     global.table_of_properties.countdown_in_seconds = 28800
 
-    global.table_of_properties.wait_in_seconds = 2
+    global.table_of_properties.wait_in_seconds = 15
 
     global.table_of_properties.size_of_the_battlefield = 2000
 
@@ -53,7 +53,7 @@
 
     global.table_of_ores = { 'iron-ore', 'copper-ore', 'stone', 'coal' }
 
-    global.table_of_colors = { squad = { r = 75, g = 155, b = 45 }, team = { r = 65, g = 120, b = 200 }, enemy = { r = 190, g = 55, b = 50 }, neutral = { r = 77, g = 77, b = 77 }, damage = { r = 255, g = 0, b = 255 }, white = { r = 255, g = 255, b = 255 } }
+    global.table_of_colors = { squad = { r = 75, g = 155, b = 45 }, team = { r = 65, g = 120, b = 200 }, enemy = { r = 190, g = 55, b = 50 }, neutral = { r = 77, g = 77, b = 77 }, damage = { r = 255, g = 0, b = 255 }, white = { r = 1, g = 1, b = 1 }, black = { r = 0, g = 0, b = 0 } }
 
     local function initialize_forces()
 
@@ -87,7 +87,7 @@
 
         force.set_cease_fire( 'player', true )
 
-        local force = game.forces[ 'force_biter_one' ]
+        local force = game.forces.force_biter_one
 
         force.set_friend( 'force_player_two', true )
 
@@ -97,7 +97,7 @@
 
         force.set_friend( 'player', true )
 
-        local force = game.forces[ 'force_biter_two' ]
+        local force = game.forces.force_biter_two
 
         force.set_friend( 'force_player_one', true )
 
@@ -125,7 +125,7 @@
 
         force.set_cease_fire( 'enemy', true )
 
-        local force = game.forces[ 'player' ]
+        local force = game.forces.player
 
         force.set_cease_fire( 'force_player_one', true )
 
@@ -141,7 +141,7 @@
 
         for key, value in pairs( defines.input_action ) do permission.set_allows_action( defines.input_action[ key ], false ) end
 
-        local table_of_definitions = { defines.input_action.gui_checked_state_changed, defines.input_action.gui_click, defines.input_action.gui_confirmed, defines.input_action.gui_elem_changed, defines.input_action.gui_location_changed, defines.input_action.gui_selected_tab_changed, defines.input_action.gui_selection_state_changed, defines.input_action.gui_switch_state_changed, defines.input_action.gui_text_changed, defines.input_action.gui_value_changed, defines.input_action.start_walking, defines.input_action.open_kills_gui, defines.input_action.toggle_show_entity_info, defines.input_action.write_to_console }
+        local table_of_definitions = { defines.input_action.gui_checked_state_changed, defines.input_action.gui_click, defines.input_action.gui_confirmed, defines.input_action.gui_elem_changed, defines.input_action.gui_location_changed, defines.input_action.gui_selected_tab_changed, defines.input_action.gui_selection_state_changed, defines.input_action.gui_switch_state_changed, defines.input_action.gui_text_changed, defines.input_action.gui_value_changed, defines.input_action.start_walking, defines.input_action.open_kills_gui, defines.input_action.toggle_show_entity_info, defines.input_action.write_to_console, defines.input_action.edit_permission_group }
 
         for _, define in pairs( table_of_definitions ) do permission.set_allows_action( define, true ) end
 
@@ -157,11 +157,17 @@
 
             game.forces[ force.name ].technologies[ 'atomic-bomb' ].enabled = false
 
-            game.forces[ force.name ].set_turret_attack_modifier( 'flamethrower-turret', 4 )
+            -- game.forces[ force.name ].set_turret_attack_modifier( 'flamethrower-turret', 1 )
 
-            game.forces[ force.name ].set_turret_attack_modifier( 'laser-turret', 2 )
+            -- game.forces[ force.name ].set_turret_attack_modifier( 'laser-turret', 1 )
 
-            game.forces[ force.name ].set_turret_attack_modifier( 'gun-turret', 4 )
+            game.forces[ force.name ].set_turret_attack_modifier( 'gun-turret', 2 )
+
+            game.forces[ force.name ].set_ammo_damage_modifier( 'flamethrower', 4 )
+
+            game.forces[ force.name ].set_ammo_damage_modifier( 'laser-turret', 2 )
+
+            game.forces[ force.name ].set_ammo_damage_modifier( 'bullet', 1 )
 
             game.forces[ force.name ].set_ammo_damage_modifier( 'cannon-shell', 1 )
 
@@ -431,9 +437,7 @@
 
         local element_button = element_frame.add( { type = 'button', name = 'event_on_click_spawn_base', caption = 'BASE' } )
 
-        -- element_button.style.color = global.table_of_colors.damage
-
-        element_button.style.font_color = global.table_of_colors.white
+        element_button.style.font_color = global.table_of_colors.black
 
         for index, spot in pairs( global.table_of_spots ) do
 
@@ -482,8 +486,6 @@
         player.insert( { name = 'firearm-magazine', count = 50 } )
 
         player.insert( { name = 'raw-fish', count = 10 } )
-
-        player.insert( { name = 'explosive-cannon-shell', count = 5 } )
 
         local table_of_entities = player.surface.find_entities_filtered( { name = 'tank', force = player.force.name } )
 
@@ -825,10 +827,6 @@
 
     local function event_on_click_lobby( player )
 
-        local surface = game.surfaces.nauvis
-
-        if global.table_of_properties.game_stage == 'ongoing_game' then surface = game.surfaces.tank_conquest end
-
         if not player.character then return end
 
         game.permissions.get_group( 'permission_spectator' ).add_player( player )
@@ -849,13 +847,17 @@
 
         global.table_of_spawns[ player.index ] = position
 
+        local surface = game.surfaces.nauvis
+
+        if global.table_of_properties.game_stage == 'ongoing_game' then surface = game.surfaces.tank_conquest end
+
         if surface.is_chunk_generated( position ) then player.teleport( surface.find_non_colliding_position( 'character', position, 3, 0.5 ), surface ) else player.teleport( position, surface ) end
 
         player.character.destructible = false
 
-        player_icon_remove( player )
-
         player.character.clear_items_inside()
+
+        player_icon_remove( player )
 
     end
 
@@ -1009,9 +1011,11 @@
 
                     global.table_of_properties.countdown_in_seconds = 28800
 
-                    global.table_of_properties.wait_in_seconds = 2
+                    global.table_of_properties.wait_in_seconds = 15
 
                     global.table_of_properties.game_stage = 'lobby'
+
+                    game.reset_time_played()
 
                     game.print( 'You are now in the lobby, please make yourself comfortable, it continues immediately.' )
 
@@ -1391,7 +1395,7 @@
 
         local surface = player.surface
 
-        if player.gui.center[ 'draw_gui_spawn_button' ] then player.gui.center[ 'draw_gui_spawn_button' ].destroy() end
+        -- if player.gui.center[ 'draw_gui_spawn_button' ] then player.gui.center[ 'draw_gui_spawn_button' ].destroy() end
 
         local position = global.table_of_spawns[ player.index ]
 
@@ -1425,7 +1429,7 @@
 
         end
 
-        if player.admin then draw_gui_spawn_button( player ) end
+        -- if player.admin then draw_gui_spawn_button( player ) end
 
         player_icon_remove( player )
 
@@ -1453,9 +1457,11 @@
 
             if event.cause.name == 'character' then
 
-                player_name_of_the_causer = event.cause.player.name
+                -- player_name_of_the_causer = event.cause.player.name
 
-                player_death_message = global.table_of_properties[ player.force.name ].icon .. ' ' .. player.name .. ' was killed by the player ' .. global.table_of_properties[ event.cause.player.force.name ].icon .. ' ' .. event.cause.player.name .. '.'
+                -- player_death_message = global.table_of_properties[ player.force.name ].icon .. ' ' .. player.name .. ' was killed by the player ' .. global.table_of_properties[ event.cause.player.force.name ].icon .. ' ' .. event.cause.player.name .. '.'
+
+                return -- Killing by a player is displayed twice.
 
             elseif event.cause.name == 'car' or event.cause.name == 'tank' or event.cause.name == 'train' then
 
@@ -1497,9 +1503,15 @@
 
     local function on_player_left_game( event )
 
-        if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
-
         local player = game.players[ event.player_index ]
+
+        global.table_of_spawns[ player.index ] = nil
+
+        global.table_of_scores[ player.index ] = nil
+
+        global.table_of_settings[ player.index ] = nil
+
+        if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
 
         player_icon_remove( player )
 
@@ -1512,10 +1524,6 @@
         end
 
         global.table_of_tanks[ player.index ] = nil
-
-        global.table_of_spawns[ player.index ] = nil
-
-        global.table_of_settings[ player.index ] = nil
 
         for _, spot in pairs( global.table_of_spots ) do if spot.players[ player.index ] ~= nil then spot.players[ player.index ] = nil end end
 
@@ -1613,7 +1621,7 @@
 
     end
 
-    -- require 'maps.tank_conquest.module_loot_boxes'
+    require 'maps.tank_conquest.module_loot_boxes'
 
     require 'maps.tank_conquest.module_map_introduction'
 

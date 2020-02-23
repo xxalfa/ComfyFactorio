@@ -7,9 +7,11 @@
 
     function draw_gui_belt_button( player )
 
-        if global.table_of_settings[ player.index ].belt == nil then
+        if not global.table_of_players[ player.index ] then global.table_of_players[ player.index ] = {} end
 
-            global.table_of_settings[ player.index ].belt = 'battle';
+        if global.table_of_players[ player.index ].belt == nil then
+
+            global.table_of_players[ player.index ].belt = 'battle';
 
             for index, slot in pairs( battle_belt ) do player.set_quick_bar_slot( index, slot ) end
 
@@ -27,15 +29,15 @@
 
         if event.element.valid and event.element.name == 'draw_gui_belt_button' then
 
-            if global.table_of_settings[ player.index ].belt == 'battle' then
+            if global.table_of_players[ player.index ].belt == 'battle' then
 
-                global.table_of_settings[ player.index ].belt = 'construction'
+                global.table_of_players[ player.index ].belt = 'construction'
 
                 for index, slot in pairs( construction_belt ) do player.set_quick_bar_slot( index, slot ) end
 
             else
 
-                global.table_of_settings[ player.index ].belt = 'battle'
+                global.table_of_players[ player.index ].belt = 'battle'
 
                 for index, slot in pairs( battle_belt ) do player.set_quick_bar_slot( index, slot ) end
 
