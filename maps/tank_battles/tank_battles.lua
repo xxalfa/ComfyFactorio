@@ -1,5 +1,5 @@
 
-    -- tank battles (royale)-- mewmew made this --
+    -- tank battles (royale)-- mewmew and xalpha made this --
 
     local utils = require 'utils.utils'
 
