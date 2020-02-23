@@ -581,11 +581,9 @@
 
                 for _, player in pairs( game.connected_players ) do
 
-                    local player_properties = global.table_of_players[ player.index ]
+                    if not global.table_of_players[ player.index ].is_spectator then
 
-                    if not player_properties.is_spectator then
-
-                        player_properties.in_battle = true
+                        global.table_of_players[ player.index ].in_battle = true
 
                         game.permissions.get_group( 'Default' ).add_player( player )
 
@@ -715,9 +713,7 @@
 
             for _, player in pairs( game.connected_players ) do
 
-                local player_properties = global.table_of_players[ player.index ]
-
-                if player_properties.in_battle then launch_atomic_rocket( player ) end
+                if global.table_of_players[ player.index ].in_battle then launch_atomic_rocket( player ) end
 
             end
 
@@ -799,11 +795,9 @@
 
         local player = game.players[ event.player_index ]
 
-        local player_properties = global.table_of_players[ player.index ]
-
         player.ticks_to_respawn = 180
 
-        player_properties.in_battle = false
+        global.table_of_players[ player.index ].in_battle = false
 
         local table_of_entities = player.surface.find_entities_filtered( { name = 'character-corpse' } )
 
@@ -815,15 +809,15 @@
 
         end
 
-        if player_properties.tank ~= nil and player_properties.tank.valid then
+        if global.table_of_players[ player.index ].tank ~= nil and global.table_of_players[ player.index ].tank.valid then
 
-            player_properties.tank.clear_items_inside()
+            global.table_of_players[ player.index ].tank.clear_items_inside()
 
-            player_properties.tank.destroy()
+            global.table_of_players[ player.index ].tank.destroy()
 
         end
 
-        player_properties.tank = nil
+        global.table_of_players[ player.index ].tank = nil
 
         local player_name_of_the_causer = nil
 
@@ -833,9 +827,7 @@
 
             if event.cause.name == 'character' then
 
-                local player_properties = global.table_of_players[ event.cause.player.index ]
-
-                player_properties.player_killed = player_properties.player_killed + 1
+                global.table_of_players[ driver.player.index ].player_killed = global.table_of_players[ driver.player.index ].player_killed + 1
 
                 player_name_of_the_causer = event.cause.player.name
 
@@ -849,9 +841,7 @@
 
                 if driver.player then
 
-                    local player_properties = global.table_of_players[ driver.player.index ]
-
-                    player_properties.player_killed = player_properties.player_killed + 1
+                    global.table_of_players[ driver.player.index ].player_killed = global.table_of_players[ driver.player.index ].player_killed + 1
 
                     player_name_of_the_causer = driver.player.name
 
@@ -889,23 +879,21 @@
 
         local player = game.players[ event.player_index ]
 
-        local player_properties = global.table_of_players[ player.index ]
-
         if game.forces[ 'force_player_' .. player.index ] then game.forces[ 'force_player_' .. player.index ] = nil end
 
         if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
 
-        if player_properties.tank ~= nil and player_properties.tank.valid then
+        if global.table_of_players[ player.index ].tank ~= nil and global.table_of_players[ player.index ].tank.valid then
 
-            player_properties.tank.clear_items_inside()
+            global.table_of_players[ player.index ].tank.clear_items_inside()
 
-            player_properties.tank.destroy()
+            global.table_of_players[ player.index ].tank.destroy()
 
         end
 
-        if player_properties.tank then player_properties.tank = nil end
+        if global.table_of_players[ player.index ].tank then global.table_of_players[ player.index ].tank = nil end
 
-        if player_properties then player_properties = nil end
+        if global.table_of_players[ player.index ] then global.table_of_players[ player.index ] = nil end
 
     end
 
@@ -952,6 +940,8 @@
     require 'maps.tank_conquest.module_loot_boxes'
 
     require 'maps.tank_conquest.module_player_belt'
+
+    require 'maps.tank_conquest.module_support_request'
 
     require 'maps.tank_battles.module_player_settings'
 
