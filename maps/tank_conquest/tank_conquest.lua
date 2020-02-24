@@ -401,7 +401,7 @@
 
         if player.force.name == 'force_spectator' then
 
-            element_frame.add( { type = 'sprite-button', name = 'event_on_click_join', caption = 'JOIN' } )
+            element_frame.add( { type = 'sprite-button', name = 'event_on_click_battle', caption = 'JOIN' } )
 
         else
 
@@ -775,7 +775,7 @@
 
     end
 
-    local function event_on_click_join( player )
+    local function event_on_click_battle( player )
 
         if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
 
@@ -1241,7 +1241,7 @@
 
         end
 
-        if event.element.valid and event.element.name == 'event_on_click_join' then
+        if event.element.valid and event.element.name == 'event_on_click_battle' then
 
             if global.table_of_delays[ player.index ] ~= nil and game.tick - global.table_of_delays[ player.index ] < 1800 then
 
@@ -1251,7 +1251,7 @@
 
                 global.table_of_delays[ player.index ] = nil
 
-                event_on_click_join( player )
+                event_on_click_battle( player )
 
                 if player.gui.center[ 'draw_gui_menu_frame' ] then player.gui.center[ 'draw_gui_menu_frame' ].destroy() end
 

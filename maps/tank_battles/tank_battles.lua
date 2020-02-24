@@ -13,6 +13,8 @@
 
     global.table_of_properties = {}
 
+    global.table_of_properties.entry_point = nil
+
     global.table_of_properties.required_number_of_players = 1
 
     global.table_of_properties.countdown_in_ticks = 54000
@@ -45,7 +47,7 @@
 
         for key, value in pairs( defines.input_action ) do permission.set_allows_action( defines.input_action[ key ], false ) end
 
-        local table_of_definitions = { defines.input_action.gui_checked_state_changed, defines.input_action.gui_click, defines.input_action.gui_confirmed, defines.input_action.gui_elem_changed, defines.input_action.gui_location_changed, defines.input_action.gui_selected_tab_changed, defines.input_action.gui_selection_state_changed, defines.input_action.gui_switch_state_changed, defines.input_action.gui_text_changed, defines.input_action.gui_value_changed, defines.input_action.start_walking, defines.input_action.open_kills_gui, defines.input_action.toggle_show_entity_info, defines.input_action.write_to_console, defines.input_action.edit_permission_group }
+        local table_of_definitions = { defines.input_action.admin_action, defines.input_action.open_gui, defines.input_action.gui_checked_state_changed, defines.input_action.gui_click, defines.input_action.gui_confirmed, defines.input_action.gui_elem_changed, defines.input_action.gui_location_changed, defines.input_action.gui_selected_tab_changed, defines.input_action.gui_selection_state_changed, defines.input_action.gui_switch_state_changed, defines.input_action.gui_text_changed, defines.input_action.gui_value_changed, defines.input_action.start_walking, defines.input_action.open_kills_gui, defines.input_action.toggle_show_entity_info, defines.input_action.write_to_console, defines.input_action.edit_permission_group, defines.input_action.edit_custom_tag }
 
         for _, define in pairs( table_of_definitions ) do permission.set_allows_action( define, true ) end
 
@@ -56,6 +58,24 @@
         permission.set_allows_action( defines.input_action.import_blueprint_string, false )
 
         permission.set_allows_action( defines.input_action.import_blueprint, false )
+
+    end
+
+    local function initialize_forces()
+
+        game.create_force( 'force_spectator' )
+
+        local force = game.forces.force_spectator
+
+        force.set_cease_fire( 'enemy', true )
+
+        force.friendly_fire = false
+
+        force.share_chart = true
+
+        local force = game.forces.enemy
+
+        force.set_cease_fire( 'force_spectator', true )
 
     end
 
@@ -205,7 +225,7 @@
 
                 local area = { { chunk_position.x * 32 - 64, chunk_position.y * 32 - 64 }, { chunk_position.x * 32 + 64, chunk_position.y * 32 + 64 } }
 
-                if surface.count_entities_filtered( { name = 'tank', type = 'rock', area = area } ) == 0 then
+                if surface.count_entities_filtered( { name = 'tank', type = 'rocks', area = area } ) == 0 then
 
                     local position = surface.find_non_colliding_position( 'tank', { chunk_position.x * 32 + 16, chunk_position.y * 32 + 16 }, 16, 8 )
 
@@ -217,7 +237,7 @@
 
         end
 
-        local position = surface.find_non_colliding_position( 'tank', { x = 0, y = 50 }, 32, 4 )
+        local position = surface.find_non_colliding_position( 'tank', { x = 0, y = 50 }, 64, 4 )
 
         if position then return position end
 
@@ -469,6 +489,58 @@
 
     end
 
+    local function event_on_click_battle( player )
+
+        global.table_of_players[ player.index ].in_battle = true
+
+        game.permissions.get_group( 'Default' ).add_player( player )
+
+        player.force = game.forces[ 'force_player_' .. player.index ]
+
+        if player.character == nil then player.create_character() end
+
+        if player.character then player.character.destructible = true end
+
+        if player.character then player.character.disable_flashlight() end
+
+        player.insert( { name = 'modular-armor', count = 1 } )
+
+        player.insert( { name = 'raw-fish', count = 10 } )
+
+        player.insert( { name = 'submachine-gun', count = 1 } )
+
+        player.insert( { name = 'rocket-launcher', count = 1 } )
+
+        player.insert( { name = 'combat-shotgun', count = 1 } )
+
+        local surface = game.surfaces.tank_battles
+
+        local position = get_valid_random_spawn_position( surface )
+
+        player.teleport( position, surface )
+
+        create_a_tank( player )
+
+    end
+
+    function event_on_click_lobby( player )
+
+        global.table_of_players[ player.index ].in_battle = false
+
+        game.permissions.get_group( 'permission_spectator' ).add_player( player )
+
+        player.force = game.forces.force_spectator
+
+        if player.character == nil then player.create_character() end
+
+        if player.character then player.character.destructible = false end
+
+        local surface = global.table_of_properties.entry_point
+
+        if surface.is_chunk_generated( { x = 0, y = 0 } ) then player.teleport( surface.find_non_colliding_position( 'character', { x = 0, y = 0 }, 9, 0.5 ), surface ) else player.teleport( { x = 0, y = 0 }, surface ) end
+
+    end
+
     function shuffle( table_of_items )
 
         local length_of_items = #table_of_items
@@ -495,6 +567,8 @@
 
         initialize_permissions()
 
+        initialize_forces()
+
         execute_on_tick( game.tick + 60, draw_circle_lobby, { game.surfaces.nauvis, 14, { x = 0, y = 0 } } )
 
         local half_arena_size = global.table_of_properties.arena_size / 2
@@ -502,6 +576,8 @@
         global.table_of_properties.distance_to_orbit = math.ceil( math.sqrt( half_arena_size ^ 2 + half_arena_size ^ 2 ) )
 
         global.table_of_properties.circle_interval = math.ceil( global.table_of_properties.countdown_in_ticks / global.table_of_properties.distance_to_orbit )
+
+        global.table_of_properties.entry_point = game.surfaces.nauvis
 
         -- global.table_of_properties.game_stage = 'do_nothing'
 
@@ -551,8 +627,6 @@
 
                     local surface = game.surfaces.nauvis
 
-                    local position = { x = 0, y = 0 }
-
                     for _, player in pairs( game.connected_players ) do
 
                         game.permissions.get_group( 'permission_spectator' ).add_player( player )
@@ -561,7 +635,7 @@
 
                         if player.character then player.character.destructible = false end
 
-                        if surface.is_chunk_generated( position ) then player.teleport( surface.find_non_colliding_position( 'character', position, 9, 0.5 ), surface ) else player.teleport( position, surface ) end
+                        if surface.is_chunk_generated( { x = 0, y = 0 } ) then player.teleport( surface.find_non_colliding_position( 'character', { x = 0, y = 0 }, 9, 0.5 ), surface ) else player.teleport( { x = 0, y = 0 }, surface ) end
 
                         draw_gui_player_scoreboard( player )
 
@@ -569,45 +643,31 @@
 
                     game.reset_time_played()
 
+                    local half_arena_size = global.table_of_properties.arena_size / 2
+
+                    global.table_of_properties.distance_to_orbit = math.ceil( math.sqrt( half_arena_size ^ 2 + half_arena_size ^ 2 ) )
+
+                    global.table_of_properties.wait_in_seconds = 15
+
+                    global.table_of_properties.entry_point = game.surfaces.nauvis
+
                     global.table_of_properties.game_stage = 'lobby'
 
                 end
 
             end
 
-            if global.table_of_properties.game_stage == 'send_the_players_into_the_arena_fully_armed_with_a_tank' then
-
-                local surface = game.surfaces.tank_battles
+            if global.table_of_properties.game_stage == 'teleport_the_players' then
 
                 for _, player in pairs( game.connected_players ) do
 
-                    if not global.table_of_players[ player.index ].is_spectator then
+                    if global.table_of_players[ player.index ].is_spectator then
 
-                        global.table_of_players[ player.index ].in_battle = true
+                        event_on_click_lobby( player )
 
-                        game.permissions.get_group( 'Default' ).add_player( player )
+                    else
 
-                        player.force = game.forces[ 'force_player_' .. player.index ]
-
-                        if player.character then player.character.destructible = true end
-
-                        if player.character then player.character.disable_flashlight() end
-
-                        player.insert( { name = 'modular-armor', count = 1 } )
-
-                        player.insert( { name = 'raw-fish', count = 10 } )
-
-                        player.insert( { name = 'combat-shotgun', count = 1 } )
-
-                        player.insert( { name = 'flamethrower', count = 1 } )
-
-                        player.insert( { name = 'rocket-launcher', count = 1 } )
-
-                        local position = get_valid_random_spawn_position( surface )
-
-                        player.teleport( position, surface )
-
-                        create_a_tank( player )
+                        event_on_click_battle( player )
 
                     end
 
@@ -627,39 +687,11 @@
 
                 end
 
-                if number_of_players > 1 then
+                if number_of_players >= global.table_of_properties.required_number_of_players then
 
-                    global.table_of_properties.game_stage = 'send_the_players_into_the_arena_fully_armed_with_a_tank'
-
-                end
-
-            end
-
-            if global.table_of_properties.game_stage == 'teleport_from_nauvis_to_the_arena' then
-
-                local surface = game.surfaces.tank_battles
-
-                local position = { x = 0, y = 0 }
-
-                for _, player in pairs( game.connected_players ) do
-
-                    if player.character then
-
-                        player.character.clear_items_inside()
-
-                        player.character.destroy()
-
-                        player.character = nil
-
-                    end
-
-                    player.create_character()
-
-                    if surface.is_chunk_generated( position ) then player.teleport( surface.find_non_colliding_position( 'character', position, 9, 0.5 ), surface ) else player.teleport( position, surface ) end
+                    global.table_of_properties.game_stage = 'teleport_the_players'
 
                 end
-
-                global.table_of_properties.game_stage = 'check_the_number_of_players_who_want_to_fight'
 
             end
 
@@ -667,13 +699,15 @@
 
                 execute_on_tick( game.tick + 1, draw_circle_lobby, { game.surfaces.tank_battles, 14, { x = 0, y = 0 } } )
 
-                global.table_of_properties.game_stage = 'teleport_from_nauvis_to_the_arena'
+                global.table_of_properties.game_stage = 'check_the_number_of_players_who_want_to_fight'
 
             end
 
             if global.table_of_properties.game_stage == 'check_the_process_of_creating_the_surface' then
 
                 if game.surfaces.tank_battles.is_chunk_generated( { x = 0, y = 0 } ) then
+
+                    global.table_of_properties.entry_point = game.surfaces.tank_battles
 
                     global.table_of_properties.game_stage = 'preparing_spawn_positions'
 
@@ -691,9 +725,9 @@
 
                 initialize_surface_customize()
 
-                game.surfaces.tank_battles.daytime = 0
+                game.surfaces.tank_battles.daytime = 0.22
 
-                game.surfaces.tank_battles.freeze_daytime = 0
+                game.surfaces.tank_battles.freeze_daytime = false
 
                 game.surfaces.tank_battles.force_generate_chunk_requests()
 
@@ -737,6 +771,10 @@
 
         local player = game.players[ event.player_index ]
 
+        player.minimap_enabled = false
+
+        player.game_view_settings = { show_controller_gui = true, show_minimap = false, show_research_info = false, show_entity_info = true, show_alert_gui = true, update_entity_selection = true, show_rail_block_visualisation = false, show_side_menu = false, show_map_view_options = false, show_quickbar = true, show_shortcut_bar = false }
+
         if not global.table_of_players[ player.index ] then global.table_of_players[ player.index ] = { won_rounds = 0, player_killed = 0, in_battle = false, is_spectator = false, tank = nil, spawn = nil } end
 
         if not game.forces[ 'force_player_' .. player.index ] then
@@ -753,59 +791,33 @@
 
             force.research_queue_enabled = true
 
-            force.friendly_fire = false
+            force.friendly_fire = true
 
-            force.share_chart = false
+            force.share_chart = true
 
         end
 
-        game.permissions.get_group( 'permission_spectator' ).add_player( player )
+        if player.online_time == 0 and global.table_of_properties.game_stage == 'ongoing_game' then
 
-        player.force = game.forces.force_spectator
+            event_on_click_battle( player )
 
-        if player.character then player.character.destructible = false end
+        else
 
-        player.minimap_enabled = false
+            event_on_click_lobby( player )
 
-        player.game_view_settings = { show_controller_gui = true, show_minimap = false, show_research_info = false, show_entity_info = true, show_alert_gui = true, update_entity_selection = true, show_rail_block_visualisation = false, show_side_menu = false, show_map_view_options = false, show_quickbar = true, show_shortcut_bar = false }
-
-        local surface = game.surfaces.nauvis
-
-        if global.table_of_properties.game_stage == 'ongoing_game' then surface = game.surfaces.tank_battles end
-
-        if surface.is_chunk_generated( { x = 0, y = 0 } ) then player.teleport( surface.find_non_colliding_position( 'character', { x = 0, y = 0 }, 9, 0.5 ), surface ) else player.teleport( { x = 0, y = 0 }, surface ) end
+        end
 
     end
 
     event.add( defines.events.on_player_joined_game, on_player_joined_game )
 
-    local function on_player_respawned( event )
-
-        local player = game.players[ event.player_index ]
-
-        game.permissions.get_group( 'permission_spectator' ).add_player( player )
-
-        player.force = game.forces.force_spectator
-
-        if player.character then player.character.destructible = false end
-
-        local surface = game.surfaces.nauvis
-
-        if global.table_of_properties.game_stage == 'ongoing_game' then surface = game.surfaces.tank_battles end
-
-        if surface.is_chunk_generated( { x = 0, y = 0 } ) then player.teleport( surface.find_non_colliding_position( 'character', { x = 0, y = 0 }, 9, 0.5 ), surface ) else player.teleport( { x = 0, y = 0 }, surface ) end
-
-    end
-
-    event.add( defines.events.on_player_respawned, on_player_respawned )
-
     local function on_player_died( event )
 
         local player = game.players[ event.player_index ]
 
-        player.ticks_to_respawn = 180
+        event_on_click_lobby( player )
 
-        global.table_of_players[ player.index ].in_battle = false
+        player.ticks_to_respawn = 180
 
         if global.table_of_players[ player.index ].tank ~= nil and global.table_of_players[ player.index ].tank.valid then
 
@@ -895,6 +907,26 @@
 
     event.add( defines.events.on_player_left_game, on_player_left_game )
 
+    local function on_console_chat( event )
+
+        if not event.message then return end
+
+        if not event.player_index then return end
+
+        local player = game.players[ event.player_index ]
+
+        local color = { r = player.color.r * 0.6 + 0.4, g = player.color.g * 0.6 + 0.4, b = player.color.b * 0.6 + 0.4, a = 1 }
+
+        for _, p in pairs( game.connected_players ) do
+
+            if p.force.name ~= player.force.name  then p.force.print( player.name .. ': '.. event.message, color ) end
+
+        end
+
+    end
+
+    event.add( defines.events.on_console_chat, on_console_chat )
+
     local function on_chunk_generated( event )
 
         if event.surface.name == 'nauvis' then return end
@@ -933,9 +965,9 @@
 
     event.add( defines.events.on_marked_for_deconstruction, on_marked_for_deconstruction )
 
-    require 'maps.tank_conquest.module_player_damage'
-
     require 'maps.tank_conquest.module_loot_boxes'
+
+    require 'maps.tank_conquest.module_player_damage'
 
     require 'maps.tank_conquest.module_player_belt'
 

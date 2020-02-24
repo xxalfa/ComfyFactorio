@@ -29,9 +29,7 @@
 
         local element_frame = player.gui.center.add( { type = 'frame', name = name_frame_main, caption = 'Settings', direction = 'vertical' } )
 
-        local player_properties = global.table_of_players[ player.index ]
-
-        if player_properties.is_spectator then
+        if global.table_of_players[ player.index ].is_spectator then
 
             question_string = 'Join the battle again?'
 
@@ -75,31 +73,9 @@
 
     end
 
-    local function on_init( event )
-
-        game.create_force( 'force_spectator' )
-
-        local force = game.forces.force_spectator
-
-        force.set_cease_fire( 'enemy', true )
-
-        force.friendly_fire = false
-
-        force.share_chart = true
-
-        local force = game.forces.enemy
-
-        force.set_cease_fire( 'force_spectator', true )
-
-    end
-
-    event.on_init( on_init )
-
     local function on_gui_click( event )
 
         local player = game.players[ event.player_index ]
-
-        local player_properties = global.table_of_players[ player.index ]
 
         if event.element.valid and event.element.name == name_button_headline then
 
@@ -127,19 +103,19 @@
 
         if event.element.valid and event.element.name == name_button_submit then
 
-            if player_properties.is_spectator then
+            if global.table_of_players[ player.index ].is_spectator then
 
-                player_properties.is_spectator = false
+                global.table_of_players[ player.index ].is_spectator = false
 
                 player.print( 'In the next round you will be part of the battle again.', { r = 255, g = 127, b = 80 } )
 
             else
 
-                player_properties.is_spectator = true
+                global.table_of_players[ player.index ].is_spectator = true
 
                 player.print( 'You are now spectating.', { r = 255, g = 127, b = 80 } )
 
-                player.character.die()
+                event_on_click_lobby( player )
 
             end
 
@@ -166,12 +142,3 @@
     end
 
     event.add( defines.events.on_player_joined_game, on_player_joined_game )
-
-    local function on_player_left_game( event )
-
-        local player = game.players[ event.player_index ]
-
-    end
-
-    event.add( defines.events.on_player_left_game, on_player_left_game )
-
