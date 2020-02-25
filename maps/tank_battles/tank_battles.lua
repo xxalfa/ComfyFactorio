@@ -1,5 +1,5 @@
 
-    -- tank battles (royale)-- mewmew and xalpha made this --
+    -- tank battles (royale) -- mewmew and xalpha made this --
 
     local utils = require 'utils.utils'
 
@@ -15,7 +15,7 @@
 
     global.table_of_properties.entry_point = nil
 
-    global.table_of_properties.required_number_of_players = 1
+    global.table_of_properties.required_number_of_players = 2
 
     global.table_of_properties.countdown_in_ticks = 54000
 
@@ -211,37 +211,13 @@
 
     local function get_valid_random_spawn_position( surface )
 
-        local arena_size = global.table_of_properties.arena_size
+        local distance_to_orbit = global.table_of_properties.distance_to_orbit - 50
 
-        local table_of_chunks = {}
+        if distance_to_orbit < 16 then return { x = 16, y = 0 } end
 
-        for chunk_position in surface.get_chunks() do table.insert( table_of_chunks, { x = chunk_position.x, y = chunk_position.y } ) end
+        local position = angle_to_position( { x = 0, y = 0 }, math.random( 0, 360 ), math.random( 16, distance_to_orbit ) )
 
-        table_of_chunks = shuffle( table_of_chunks )
-
-        for _, chunk_position in pairs( table_of_chunks ) do
-
-            if chunk_position.x * 32 < arena_size and chunk_position.y * 32 < arena_size and chunk_position.x * 32 >= arena_size * - 1 and chunk_position.y * 32 >= arena_size * - 1 then
-
-                local area = { { chunk_position.x * 32 - 64, chunk_position.y * 32 - 64 }, { chunk_position.x * 32 + 64, chunk_position.y * 32 + 64 } }
-
-                if surface.count_entities_filtered( { name = 'tank', type = 'rocks', area = area } ) == 0 then
-
-                    local position = surface.find_non_colliding_position( 'tank', { chunk_position.x * 32 + 16, chunk_position.y * 32 + 16 }, 16, 8 )
-
-                    if position then return position end
-
-                end
-
-            end
-
-        end
-
-        local position = surface.find_non_colliding_position( 'tank', { x = 0, y = 50 }, 64, 4 )
-
-        if position then return position end
-
-        return { x = 0, y = 50 }
+        return position
 
     end
 
@@ -345,19 +321,23 @@
 
         if tile.valid and tile.name ~= 'water' and tile.name ~= 'deepwater' and tile.name ~= 'concrete' and tile.name ~= 'refined-concrete' and tile.name ~= 'out-of-map' then
 
-            surface.set_tiles( { { name = 'water', position = tile_position } }, true )
+            local table_of_entities = surface.find_entities_filtered( { position = tile_position, radius = 0.8 } )
+
+            for _, entity in pairs( table_of_entities ) do
+
+                if entity.name == 'character' then entity.die( 'enemy' ) else entity.destroy() end
+
+            end
 
             surface.destroy_decoratives( { position = tile_position } )
 
-            local table_of_entities = surface.find_entities_filtered( { position = tile_position, radius = 0.8 } )
-
-            for _, entity in pairs( table_of_entities ) do entity.destroy() end
+            surface.set_tiles( { { name = 'water', position = tile_position } }, true )
 
         end
 
     end
 
-    local function angle_to_position( position, angle, distance )
+    function angle_to_position( position, angle, distance )
 
         local deg_to_rad_factor = math.pi / 180
 
@@ -405,6 +385,8 @@
 
         local entity = player.surface.create_entity( { name = 'atomic-rocket', force = 'enemy', speed = 0, max_range = 1750, position = position_of_launch, target = position_of_impact } )
 
+        player.print( 'ATTENTION: NUCLEAR LAUNCH DETECTED', { r = 0.9, g = 0, b = 0 } )
+
         player.add_custom_alert( entity, { type = 'item', name = 'atomic-bomb' }, 'NUCLEAR LAUNCH DETECTED', false )
 
         player.play_sound( { path = 'utility/alert_destroyed', position = position_of_impact, volume_modifier = 1 }  )
@@ -445,7 +427,7 @@
 
         local next_tick = game.tick + 1
 
-        for angle = 0, 360 do
+        for angle = 0, 360, 0.35 do
 
             local tile_position = angle_to_position( center_position, angle, distance_to_orbit )
 
@@ -453,7 +435,7 @@
 
                 local area_position = { x = tile_position.x + x, y = tile_position.y + y }
 
-                execute_on_tick( next_tick, tile_to_water, { area_position } )
+                execute_on_tick( next_tick + math.random( 0, 8 ), tile_to_water, { area_position } )
 
             end end
 
@@ -467,11 +449,11 @@
 
     local function create_a_tank( player )
 
-        local position = player.surface.find_non_colliding_position( 'tank', player.position, 64, 4 )
+        local position = player.surface.find_non_colliding_position( 'tank', player.position, 32, 4 )
 
-        if not position then position = { x = 0, y = 50 } end
+        if not position then return { x = 16, y = 0 } end
 
-        local entity = player.surface.create_entity( { name = 'tank', position = position, force = player.force.name } )
+        local entity = player.surface.create_entity( { name = 'tank', position = position, force = player.force.name, direction = math.random( 0, 7 ) } )
 
         if not entity then return end
 
@@ -489,7 +471,7 @@
 
     end
 
-    local function event_on_click_battle( player )
+    function event_on_click_battle( player )
 
         global.table_of_players[ player.index ].in_battle = true
 
@@ -497,15 +479,25 @@
 
         player.force = game.forces[ 'force_player_' .. player.index ]
 
-        if player.character == nil then player.create_character() end
+        if player.character then
+
+            player.character.clear_items_inside()
+
+            player.character.destroy()
+
+            player.character = nil
+
+        end
+
+        player.create_character()
 
         if player.character then player.character.destructible = true end
 
         if player.character then player.character.disable_flashlight() end
 
-        player.insert( { name = 'modular-armor', count = 1 } )
-
         player.insert( { name = 'raw-fish', count = 10 } )
+
+        player.insert( { name = 'modular-armor', count = 1 } )
 
         player.insert( { name = 'submachine-gun', count = 1 } )
 
@@ -519,7 +511,7 @@
 
         player.teleport( position, surface )
 
-        create_a_tank( player )
+        execute_on_tick( game.tick + 120, create_a_tank, { player } )
 
     end
 
@@ -531,9 +523,29 @@
 
         player.force = game.forces.force_spectator
 
-        if player.character == nil then player.create_character() end
+        if player.character then
+
+            player.character.clear_items_inside()
+
+            player.character.destroy()
+
+            player.character = nil
+
+        end
+
+        player.create_character()
 
         if player.character then player.character.destructible = false end
+
+        if global.table_of_players[ player.index ].tank ~= nil and global.table_of_players[ player.index ].tank.valid then
+
+            global.table_of_players[ player.index ].tank.clear_items_inside()
+
+            global.table_of_players[ player.index ].tank.destroy()
+
+        end
+
+        global.table_of_players[ player.index ].tank = nil
 
         local surface = global.table_of_properties.entry_point
 
@@ -571,9 +583,7 @@
 
         execute_on_tick( game.tick + 60, draw_circle_lobby, { game.surfaces.nauvis, 14, { x = 0, y = 0 } } )
 
-        local half_arena_size = global.table_of_properties.arena_size / 2
-
-        global.table_of_properties.distance_to_orbit = math.ceil( math.sqrt( half_arena_size ^ 2 + half_arena_size ^ 2 ) )
+        global.table_of_properties.distance_to_orbit = global.table_of_properties.arena_size / 2
 
         global.table_of_properties.circle_interval = math.ceil( global.table_of_properties.countdown_in_ticks / global.table_of_properties.distance_to_orbit )
 
@@ -588,6 +598,28 @@
     local function on_tick( event )
 
         if game.tick % 60 == 0 then
+
+            if global.table_of_properties.game_stage == 'round_is_over' then
+
+                game.reset_time_played()
+
+                global.table_of_properties.distance_to_orbit = global.table_of_properties.arena_size / 2
+
+                global.table_of_properties.wait_in_seconds = 15
+
+                global.table_of_properties.entry_point = game.surfaces.nauvis
+
+                global.table_of_properties.game_stage = 'lobby'
+
+                for _, player in pairs( game.connected_players ) do
+
+                    event_on_click_lobby( player )
+
+                    show_gui_player_scoreboard( player )
+
+                end
+
+            end
 
             if global.table_of_properties.game_stage == 'ongoing_game' then
 
@@ -613,8 +645,6 @@
 
                         global.table_of_players[ player_index ].won_rounds = global.table_of_players[ player_index ].won_rounds + 1
 
-                        global.table_of_players[ player_index ].in_battle = false
-
                         game.print( game.players[ player_index ].name .. ' has won the battle!', { r = 150, g = 150, b = 0 } )
 
                     end
@@ -625,33 +655,7 @@
 
                     end
 
-                    local surface = game.surfaces.nauvis
-
-                    for _, player in pairs( game.connected_players ) do
-
-                        game.permissions.get_group( 'permission_spectator' ).add_player( player )
-
-                        player.force = game.forces.force_spectator
-
-                        if player.character then player.character.destructible = false end
-
-                        if surface.is_chunk_generated( { x = 0, y = 0 } ) then player.teleport( surface.find_non_colliding_position( 'character', { x = 0, y = 0 }, 9, 0.5 ), surface ) else player.teleport( { x = 0, y = 0 }, surface ) end
-
-                        draw_gui_player_scoreboard( player )
-
-                    end
-
-                    game.reset_time_played()
-
-                    local half_arena_size = global.table_of_properties.arena_size / 2
-
-                    global.table_of_properties.distance_to_orbit = math.ceil( math.sqrt( half_arena_size ^ 2 + half_arena_size ^ 2 ) )
-
-                    global.table_of_properties.wait_in_seconds = 15
-
-                    global.table_of_properties.entry_point = game.surfaces.nauvis
-
-                    global.table_of_properties.game_stage = 'lobby'
+                    global.table_of_properties.game_stage = 'round_is_over'
 
                 end
 
@@ -670,6 +674,8 @@
                         event_on_click_battle( player )
 
                     end
+
+                    hide_gui_player_scoreboard( player )
 
                 end
 
@@ -725,7 +731,7 @@
 
                 initialize_surface_customize()
 
-                game.surfaces.tank_battles.daytime = 0.22
+                game.surfaces.tank_battles.daytime = 0.20
 
                 game.surfaces.tank_battles.freeze_daytime = false
 
@@ -791,7 +797,7 @@
 
             force.research_queue_enabled = true
 
-            force.friendly_fire = true
+            force.friendly_fire = false
 
             force.share_chart = true
 
@@ -811,23 +817,21 @@
 
     event.add( defines.events.on_player_joined_game, on_player_joined_game )
 
+    -- local function on_player_respawned( event )
+
+    --     local player = game.players[ event.player_index ]
+
+    -- end
+
+    -- event.add( defines.events.on_player_respawned, on_player_respawned )
+
     local function on_player_died( event )
 
         local player = game.players[ event.player_index ]
 
+        player.ticks_to_respawn = 0
+
         event_on_click_lobby( player )
-
-        player.ticks_to_respawn = 180
-
-        if global.table_of_players[ player.index ].tank ~= nil and global.table_of_players[ player.index ].tank.valid then
-
-            global.table_of_players[ player.index ].tank.clear_items_inside()
-
-            global.table_of_players[ player.index ].tank.destroy()
-
-        end
-
-        global.table_of_players[ player.index ].tank = nil
 
         local player_name_of_the_causer = nil
 

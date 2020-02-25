@@ -181,8 +181,14 @@
 
     event.add( defines.events.on_player_joined_game, on_player_joined_game )
 
-    function draw_gui_player_scoreboard( player )
+    function show_gui_player_scoreboard( player )
 
         draw_frame_main( player )
+
+    end
+
+    function hide_gui_player_scoreboard( player )
+
+        if player.gui.center[ name_frame_main ] then player.gui.center[ name_frame_main ].destroy() end
 
     end
