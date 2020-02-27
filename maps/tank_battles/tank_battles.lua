@@ -19,13 +19,15 @@
 
     global.table_of_properties.countdown_in_ticks = 54000
 
+    global.table_of_properties.tick_from_the_start_of_the_round = 0
+
     global.table_of_properties.wait_in_seconds = 15
 
     global.table_of_properties.arena_size = 1000
 
     global.table_of_properties.distance_to_orbit = 0
 
-    global.table_of_properties.circle_interval = 0
+    global.table_of_properties.circle_reduction_interval = 0
 
     global.table_of_properties.arena_tree_chance = 0
 
@@ -124,6 +126,14 @@
             game.surfaces.tank_battles.map_gen_settings = map_gen_settings
 
          end
+
+        game.surfaces.tank_battles.daytime = 0.15
+
+        game.surfaces.tank_battles.always_day = false
+
+        game.surfaces.tank_battles.freeze_daytime = false
+
+        game.surfaces.tank_battles.force_generate_chunk_requests()
 
     end
 
@@ -439,7 +449,7 @@
 
             end end
 
-            next_tick = game.tick + math.random( 1, global.table_of_properties.circle_interval )
+            next_tick = game.tick + math.random( 1, global.table_of_properties.circle_reduction_interval )
 
         end
 
@@ -468,6 +478,20 @@
         entity.set_driver( player )
 
         global.table_of_players[ player.index ].tank = entity
+
+    end
+
+    local function destroy_a_tank( player )
+
+        if global.table_of_players[ player.index ].tank ~= nil and global.table_of_players[ player.index ].tank.valid then
+
+            global.table_of_players[ player.index ].tank.clear_items_inside()
+
+            global.table_of_players[ player.index ].tank.destroy()
+
+        end
+
+        global.table_of_players[ player.index ].tank = nil
 
     end
 
@@ -523,6 +547,8 @@
 
         player.force = game.forces.force_spectator
 
+        destroy_a_tank( player )
+
         if player.character then
 
             player.character.clear_items_inside()
@@ -533,19 +559,11 @@
 
         end
 
-        player.create_character()
+        player.create_character() -- Can't set character for non player with non god controller.
 
         if player.character then player.character.destructible = false end
 
-        if global.table_of_players[ player.index ].tank ~= nil and global.table_of_players[ player.index ].tank.valid then
-
-            global.table_of_players[ player.index ].tank.clear_items_inside()
-
-            global.table_of_players[ player.index ].tank.destroy()
-
-        end
-
-        global.table_of_players[ player.index ].tank = nil
+        if player.character then player.character.disable_flashlight() end
 
         local surface = global.table_of_properties.entry_point
 
@@ -575,6 +593,12 @@
 
         game.surfaces.nauvis.map_gen_settings = { width = 10, height = 10 }
 
+        game.surfaces.nauvis.always_day = true
+
+        game.surfaces.nauvis.force_generate_chunk_requests()
+
+        game.surfaces.nauvis.request_to_generate_chunks( { x = 0, y = 0 }, 1 )
+
         game.create_surface( 'tank_battles', { width = 1, height = 1 } )
 
         initialize_permissions()
@@ -583,11 +607,11 @@
 
         execute_on_tick( game.tick + 60, draw_circle_lobby, { game.surfaces.nauvis, 14, { x = 0, y = 0 } } )
 
+        global.table_of_properties.entry_point = game.surfaces.nauvis
+
         global.table_of_properties.distance_to_orbit = global.table_of_properties.arena_size / 2
 
-        global.table_of_properties.circle_interval = math.ceil( global.table_of_properties.countdown_in_ticks / global.table_of_properties.distance_to_orbit )
-
-        global.table_of_properties.entry_point = game.surfaces.nauvis
+        global.table_of_properties.circle_reduction_interval = math.ceil( global.table_of_properties.countdown_in_ticks / global.table_of_properties.distance_to_orbit )
 
         -- global.table_of_properties.game_stage = 'do_nothing'
 
@@ -679,6 +703,8 @@
 
                 end
 
+                global.table_of_properties.tick_from_the_start_of_the_round = game.tick
+
                 global.table_of_properties.game_stage = 'ongoing_game'
 
             end
@@ -731,12 +757,6 @@
 
                 initialize_surface_customize()
 
-                game.surfaces.tank_battles.daytime = 0.20
-
-                game.surfaces.tank_battles.freeze_daytime = false
-
-                game.surfaces.tank_battles.force_generate_chunk_requests()
-
                 global.table_of_properties.game_stage = 'check_the_process_of_creating_the_surface'
 
             end
@@ -757,7 +777,7 @@
 
         end
 
-        if game.tick % 10800 == 0 and global.table_of_properties.game_stage == 'ongoing_game' then
+        if game.tick - global.table_of_properties.tick_from_the_start_of_the_round % 10800 == 0 and global.table_of_properties.game_stage == 'ongoing_game' then
 
             for _, player in pairs( game.connected_players ) do
 
@@ -767,7 +787,7 @@
 
         end
 
-        if game.tick % global.table_of_properties.circle_interval == 0 and global.table_of_properties.game_stage == 'ongoing_game' then do_shrink_circle() end
+        if game.tick % global.table_of_properties.circle_reduction_interval == 0 and global.table_of_properties.game_stage == 'ongoing_game' then do_shrink_circle() end
 
     end
 
@@ -791,7 +811,15 @@
 
             force.set_friend( 'force_spectator', true )
 
+            force.set_ammo_damage_modifier( 'capsule', 5 )
+
+            -- force.set_ammo_damage_modifier( 'combat-robot-beam', 5 )
+
+            -- force.set_ammo_damage_modifier( 'combat-robot-laser', 5 )
+
             force.technologies[ 'follower-robot-count-1' ].researched = true
+
+            force.technologies[ 'follower-robot-count-2' ].researched = true
 
             force.technologies[ 'toolbelt' ].researched = true
 
@@ -817,21 +845,21 @@
 
     event.add( defines.events.on_player_joined_game, on_player_joined_game )
 
-    -- local function on_player_respawned( event )
+    local function on_player_respawned( event )
 
-    --     local player = game.players[ event.player_index ]
+        local player = game.players[ event.player_index ]
 
-    -- end
+        event_on_click_lobby( player )
 
-    -- event.add( defines.events.on_player_respawned, on_player_respawned )
+    end
+
+    event.add( defines.events.on_player_respawned, on_player_respawned )
 
     local function on_player_died( event )
 
         local player = game.players[ event.player_index ]
 
         player.ticks_to_respawn = 0
-
-        event_on_click_lobby( player )
 
         local player_name_of_the_causer = nil
 
@@ -895,15 +923,7 @@
 
         game.merge_forces( 'force_player_' .. player.index, 'neutral' )
 
-        if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
-
-        if global.table_of_players[ player.index ].tank ~= nil and global.table_of_players[ player.index ].tank.valid then
-
-            global.table_of_players[ player.index ].tank.clear_items_inside()
-
-            global.table_of_players[ player.index ].tank.destroy()
-
-        end
+        destroy_a_tank( player )
 
         if global.table_of_players[ player.index ] then global.table_of_players[ player.index ] = nil end
 

@@ -21,7 +21,7 @@
 
     local function draw_button_headline( player )
 
-        if player.gui.top[ name_button_headline ] then return end
+        if player.gui.top[ name_button_headline ] then player.gui.top[ name_button_headline ].destroy() end
 
         player.gui.top.add( { type = 'sprite-button', name = name_button_headline, sprite = 'entity/compilatron', tooltip = 'Comfylatron' } )
 

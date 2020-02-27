@@ -843,6 +843,12 @@
 
         global.table_of_tanks[ player.index ] = nil
 
+        if player.character then player.character.destructible = false end
+
+        if player.character then player.character.clear_items_inside() end
+
+        player_icon_remove( player )
+
         local position = { x = 0, y = 0 }
 
         global.table_of_spawns[ player.index ] = position
@@ -852,12 +858,6 @@
         if global.table_of_properties.game_stage == 'ongoing_game' then surface = game.surfaces.tank_conquest end
 
         if surface.is_chunk_generated( position ) then player.teleport( surface.find_non_colliding_position( 'character', position, 3, 0.5 ), surface ) else player.teleport( position, surface ) end
-
-        player.character.destructible = false
-
-        player.character.clear_items_inside()
-
-        player_icon_remove( player )
 
     end
 

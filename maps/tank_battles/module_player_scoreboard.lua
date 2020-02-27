@@ -13,7 +13,7 @@
 
     local function draw_button_headline( player )
 
-        if player.gui.top[ name_button_headline ] then return end
+        if player.gui.top[ name_button_headline ] then player.gui.top[ name_button_headline ].destroy() end
 
         local element_button = player.gui.top.add( { type = 'button', name = name_button_headline, caption = 'SCOREBOARD', tooltip = '' } )
 

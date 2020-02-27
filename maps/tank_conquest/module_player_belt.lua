@@ -1,7 +1,7 @@
 
     local event = require 'utils.event'
 
-    local battle_belt = { 'raw-fish', 'repair-pack', 'wood', 'defender-capsule', 'stone-wall', 'gun-turret', 'land-mine', 'flamethrower-ammo', 'grenade', 'cluster-grenade', 'firearm-magazine', 'piercing-rounds-magazine', 'uranium-rounds-magazine', 'rocket', 'explosive-rocket', 'atomic-bomb', 'cannon-shell', 'explosive-cannon-shell', 'uranium-cannon-shell', 'explosive-uranium-cannon-shell' }
+    local battle_belt = { 'raw-fish', 'repair-pack', 'defender-capsule', 'destroyer-capsule', 'distractor-capsule', 'stone-wall', 'gun-turret', 'land-mine', 'grenade', 'cluster-grenade', 'firearm-magazine', 'piercing-rounds-magazine', 'uranium-rounds-magazine', 'rocket', 'explosive-rocket', 'atomic-bomb', 'cannon-shell', 'explosive-cannon-shell', 'uranium-cannon-shell', 'explosive-uranium-cannon-shell' }
 
     local construction_belt = { 'inserter', 'fast-inserter', 'long-handed-inserter', 'transport-belt', 'underground-belt', 'splitter', 'assembling-machine-1', 'assembling-machine-2', 'small-electric-pole', 'medium-electric-pole', 'electric-mining-drill', 'stone-furnace', 'steel-furnace', 'train-stop', 'rail-signal', 'rail-chain-signal', 'rail', 'boiler', 'steam-engine', 'offshore-pump' }
 
