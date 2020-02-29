@@ -19,7 +19,7 @@
 
     global.table_of_properties.countdown_in_ticks = 54000
 
-    global.table_of_properties.tick_from_the_start_of_the_round = 0
+    global.table_of_properties.battle_tick = 0
 
     global.table_of_properties.wait_in_seconds = 15
 
@@ -27,7 +27,7 @@
 
     global.table_of_properties.distance_to_orbit = 0
 
-    global.table_of_properties.circle_reduction_interval = 0
+    global.table_of_properties.orbit_reduction_interval = 0
 
     global.table_of_properties.arena_tree_chance = 0
 
@@ -307,13 +307,13 @@
 
             if tile_name then
 
-                surface.set_tiles( { { name = tile_name, position = tile_position } }, true )
-
-                surface.destroy_decoratives( { position = tile_position } )
-
                 local table_of_entities = surface.find_entities_filtered( { position = tile_position, radius = 0.8 } )
 
                 for _, entity in pairs( table_of_entities ) do entity.destroy() end
+
+                surface.destroy_decoratives( { position = tile_position } )
+
+                surface.set_tiles( { { name = tile_name, position = tile_position } }, true )
 
                 if math.random( 1, 32 ) == 1 and tile_name == 'water' then surface.create_entity( { name = 'fish', position = tile_position } ) end
 
@@ -421,7 +421,9 @@
 
         execute_on_tick( game.tick + moment_of_launch, create_atomic_rocket, { player, position_of_launch, position_of_impact } )
 
-        execute_on_tick( game.tick + moment_of_launch + moment_of_impact, blow_up_the_ground, { position_of_impact } )
+        -- It looks good, but it creates a bottleneck if there are too many players.
+
+        -- execute_on_tick( game.tick + moment_of_launch + moment_of_impact, blow_up_the_ground, { position_of_impact } )
 
     end
 
@@ -449,7 +451,7 @@
 
             end end
 
-            next_tick = game.tick + math.random( 1, global.table_of_properties.circle_reduction_interval )
+            next_tick = game.tick + math.random( 1, global.table_of_properties.orbit_reduction_interval )
 
         end
 
@@ -477,7 +479,7 @@
 
         entity.set_driver( player )
 
-        global.table_of_players[ player.index ].tank = entity
+        if global.table_of_players[ player.index ] then global.table_of_players[ player.index ].tank = entity end
 
     end
 
@@ -491,13 +493,13 @@
 
         end
 
-        global.table_of_players[ player.index ].tank = nil
+        if global.table_of_players[ player.index ] then global.table_of_players[ player.index ].tank = nil end
 
     end
 
     function event_on_click_battle( player )
 
-        global.table_of_players[ player.index ].in_battle = true
+        if global.table_of_players[ player.index ] then global.table_of_players[ player.index ].in_battle = true end
 
         game.permissions.get_group( 'Default' ).add_player( player )
 
@@ -541,7 +543,7 @@
 
     function event_on_click_lobby( player )
 
-        global.table_of_players[ player.index ].in_battle = false
+        if global.table_of_players[ player.index ] then global.table_of_players[ player.index ].in_battle = false end
 
         game.permissions.get_group( 'permission_spectator' ).add_player( player )
 
@@ -559,7 +561,7 @@
 
         end
 
-        player.create_character() -- Can't set character for non player with non god controller.
+        player.create_character()
 
         if player.character then player.character.destructible = false end
 
@@ -611,7 +613,7 @@
 
         global.table_of_properties.distance_to_orbit = global.table_of_properties.arena_size / 2
 
-        global.table_of_properties.circle_reduction_interval = math.ceil( global.table_of_properties.countdown_in_ticks / global.table_of_properties.distance_to_orbit )
+        global.table_of_properties.orbit_reduction_interval = math.ceil( global.table_of_properties.countdown_in_ticks / global.table_of_properties.distance_to_orbit )
 
         -- global.table_of_properties.game_stage = 'do_nothing'
 
@@ -703,7 +705,7 @@
 
                 end
 
-                global.table_of_properties.tick_from_the_start_of_the_round = game.tick
+                global.table_of_properties.battle_tick = game.tick
 
                 global.table_of_properties.game_stage = 'ongoing_game'
 
@@ -777,7 +779,9 @@
 
         end
 
-        if game.tick - global.table_of_properties.tick_from_the_start_of_the_round % 10800 == 0 and global.table_of_properties.game_stage == 'ongoing_game' then
+        local battle_tick = game.tick - global.table_of_properties.battle_tick
+
+        if battle_tick > 0 and battle_tick % 10800 == 0 and global.table_of_properties.game_stage == 'ongoing_game' then
 
             for _, player in pairs( game.connected_players ) do
 
@@ -787,7 +791,7 @@
 
         end
 
-        if game.tick % global.table_of_properties.circle_reduction_interval == 0 and global.table_of_properties.game_stage == 'ongoing_game' then do_shrink_circle() end
+        if game.tick % global.table_of_properties.orbit_reduction_interval == 0 and global.table_of_properties.game_stage == 'ongoing_game' then do_shrink_circle() end
 
     end
 
@@ -811,11 +815,13 @@
 
             force.set_friend( 'force_spectator', true )
 
-            force.set_ammo_damage_modifier( 'capsule', 5 )
+            force.set_ammo_damage_modifier( 'capsule', - 0.5 )
 
-            -- force.set_ammo_damage_modifier( 'combat-robot-beam', 5 )
+            force.set_ammo_damage_modifier( 'laser-turret', - 0.7 )
 
-            -- force.set_ammo_damage_modifier( 'combat-robot-laser', 5 )
+            force.set_ammo_damage_modifier( 'combat-robot-beam', - 0.9 )
+
+            force.set_ammo_damage_modifier( 'combat-robot-laser', - 0.9 )
 
             force.technologies[ 'follower-robot-count-1' ].researched = true
 
@@ -874,8 +880,6 @@
                 player_name_of_the_causer = event.cause.player.name
 
                 player_death_message = player.name .. ' was killed by the player ' .. event.cause.player.name .. '.'
-
-                -- return -- Killing by a player is displayed twice.
 
             elseif event.cause.name == 'car' or event.cause.name == 'tank' or event.cause.name == 'train' then
 
