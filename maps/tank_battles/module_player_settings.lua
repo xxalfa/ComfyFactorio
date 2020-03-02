@@ -107,13 +107,13 @@
 
                 global.table_of_players[ player.index ].is_spectator = false
 
-                player.print( 'In the next round you will be part of the battle again.', { r = 255, g = 127, b = 80 } )
+                player.print( 'In the next round you will be part of the battle again.', player.chat_color )
 
             else
 
                 global.table_of_players[ player.index ].is_spectator = true
 
-                player.print( 'You are now spectating.', { r = 255, g = 127, b = 80 } )
+                player.print( 'You are now spectating.', player.chat_color )
 
                 event_on_click_lobby( player )
 

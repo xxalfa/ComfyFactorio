@@ -993,9 +993,13 @@
 
     event.add( defines.events.on_marked_for_deconstruction, on_marked_for_deconstruction )
 
+    require 'maps.tank_battles.module_player_color'
+
     require 'maps.tank_conquest.module_loot_boxes'
 
     require 'maps.tank_conquest.module_player_damage'
+
+    require 'maps.tank_battles.module_scenario_introduction'
 
     require 'maps.tank_conquest.module_player_belt'
 

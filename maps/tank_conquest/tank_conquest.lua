@@ -1597,7 +1597,7 @@
 
     require 'maps.tank_conquest.module_loot_boxes'
 
-    require 'maps.tank_conquest.module_map_introduction'
+    require 'maps.tank_conquest.module_scenario_introduction'
 
     require 'maps.tank_conquest.module_player_belt'
 
