@@ -597,17 +597,11 @@
 
         game.surfaces.nauvis.always_day = true
 
-        game.surfaces.nauvis.force_generate_chunk_requests()
-
-        game.surfaces.nauvis.request_to_generate_chunks( { x = 0, y = 0 }, 1 )
-
         game.create_surface( 'tank_battles', { width = 1, height = 1 } )
 
         initialize_permissions()
 
         initialize_forces()
-
-        execute_on_tick( game.tick + 60, draw_circle_lobby, { game.surfaces.nauvis, 14, { x = 0, y = 0 } } )
 
         global.table_of_properties.entry_point = game.surfaces.nauvis
 
@@ -847,6 +841,14 @@
 
         end
 
+        if global.is_the_nauvis_lobby_drawn == nil then
+
+            execute_on_tick( game.tick + 1, draw_circle_lobby, { game.surfaces.nauvis, 14, { x = 0, y = 0 } } )
+
+            global.is_the_nauvis_lobby_drawn = true
+
+        end
+
     end
 
     event.add( defines.events.on_player_joined_game, on_player_joined_game )
@@ -925,9 +927,9 @@
 
         local player = game.players[ event.player_index ]
 
-        game.merge_forces( 'force_player_' .. player.index, 'neutral' )
-
         destroy_a_tank( player )
+
+        game.merge_forces( 'force_player_' .. player.index, 'neutral' )
 
         if global.table_of_players[ player.index ] then global.table_of_players[ player.index ] = nil end
 

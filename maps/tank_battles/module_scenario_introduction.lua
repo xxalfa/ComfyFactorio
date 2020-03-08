@@ -12,8 +12,8 @@
     local scenario_name = 'Tank Battles'
 
     local scenario_introduction = [[
-    This adjusted Factorio scenario is part of the Comfy community, if you are not already
-    involved, you are welcome >> getcomfy.eu/discord
+    This adjusted Factorio scenario is part of the Comfy community, if you are not
+    already involved, you are welcome >> getcomfy.eu/discord
 
     What can you expect in this scenario? In short, action-packed tank battles.
 
@@ -21,7 +21,8 @@
     teleported to a random location, each round has a time frame of approximately
     15 minutes, with the map becoming smaller and smaller towards the center. At the
     end of a round, this will escalate the battle, with the last surviving player
-    emerging as the round's winner.
+    emerging as the round's winner. The map overview has been switched off to
+    make it difficult to find other players.
 
     You should pay particular attention to two things, on the map there are wooden
     boxes, which provide items for defense, but also for attack. And then every three
