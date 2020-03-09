@@ -50,6 +50,13 @@ local function feed_pet(unit)
 	return true
 end
 
+local function is_valid_player(player, unit)
+	if not player.character then return end
+	if not player.character.valid then return end
+	if player.surface.index ~= unit.surface.index then return end
+	return true
+end
+
 function Public.biter_pets_tame_unit(player, unit, forced)
 	if global.biter_pets[player.index] then return false end
 	if not forced then
@@ -68,8 +75,30 @@ function Public.biter_pets_tame_unit(player, unit, forced)
 	return true
 end
 
+function Public.tame_unit_for_closest_player(unit)
+	local valid_players = {}
+	for _, player in pairs(game.connected_players) do
+		if is_valid_player(player, unit) then table.insert(valid_players, player) end
+	end
+	
+	local nearest_player = valid_players[1]
+	if not nearest_player then return end
+
+	for i = 2, #valid_players, 1 do	
+		local player = valid_players[i + 1]
+		if player.position.x ^ 2 + player.position.y ^ 2 < nearest_player.position.x ^ 2 + nearest_player.position.y ^ 2 then
+			nearest_player = spawner
+		end
+	end	
+	
+	Public.biter_pets_tame_unit(nearest_player, unit, true)
+end
+
 local function command_unit(entity, player)
-	if (player.position.x - entity.position.x) ^ 2 + (player.position.y - entity.position.y) ^ 2 < 256 then
+	local square_distance = (player.position.x - entity.position.x) ^ 2 + (player.position.y - entity.position.y) ^ 2
+	
+	--Pet will follow, if the player is between a distance of 8 to 160 tiles away from it.
+	if square_distance < 64 or square_distance > 25600 then
 		entity.set_command({type = defines.command.wander, distraction = defines.distraction.by_enemy})
 	else
 		entity.set_command({type = defines.command.go_to_location, destination_entity = player.character, radius = 4, distraction = defines.distraction.by_damage})
