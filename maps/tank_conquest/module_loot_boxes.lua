@@ -7,7 +7,7 @@
 
         if event.surface.name == 'nauvis' then return end
 
-        if not global.table_of_properties.loot_box_chance then global.table_of_properties.loot_box_chance = 3000 end
+        if not global.loot_box_chance then global.loot_box_chance = 3000 end
 
         local chunk_position = { x = event.area.left_top.x, y = event.area.left_top.y }
 
@@ -15,7 +15,7 @@
 
             local tile_position = { x = chunk_position.x + x, y = chunk_position.y + y }
 
-            if math.random( 1, global.table_of_properties.loot_box_chance ) == 1 and event.surface.can_place_entity( { name = 'wooden-chest', force = 'enemy', position = tile_position } ) then event.surface.create_entity( { name = 'wooden-chest', force = 'enemy', position = tile_position } ) end
+            if math.random( 1, global.loot_box_chance ) == 1 and event.surface.can_place_entity( { name = 'wooden-chest', force = 'enemy', position = tile_position } ) then event.surface.create_entity( { name = 'wooden-chest', force = 'enemy', position = tile_position } ) end
 
         end end
 
@@ -25,7 +25,7 @@
 
     local function on_entity_died( event )
 
-        if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
+        if global.game_stage ~= 'ongoing_game' then return end
 
         if event.entity.name == 'wooden-chest' and event.entity.force.name == 'enemy' then
 

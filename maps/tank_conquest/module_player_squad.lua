@@ -15,7 +15,7 @@
 
         if player.gui.left[ 'draw_gui_squad_frame' ] then player.gui.left[ 'draw_gui_squad_frame' ].destroy() end
 
-        -- if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
+        -- if global.game_stage ~= 'ongoing_game' then return end
 
         local element_frame = player.gui.left.add( { type = 'frame', name = 'draw_gui_squad_frame', direction = 'vertical' } )
 

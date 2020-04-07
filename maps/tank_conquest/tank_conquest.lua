@@ -19,21 +19,21 @@
 
     global.table_of_properties = {}
 
-    global.table_of_properties.required_number_of_players = 1
+    global.required_number_of_players = 1
 
-    global.table_of_properties.countdown_in_seconds = 28800
+    global.countdown_in_seconds = 28800
 
-    global.table_of_properties.wait_in_seconds = 15
+    global.wait_in_seconds = 15
 
-    global.table_of_properties.size_of_the_battlefield = 2000
+    global.size_of_the_battlefield = 2000
 
-    global.table_of_properties.amount_of_tickets = 800
+    global.amount_of_tickets = 800
 
-    global.table_of_properties.conquest_speed = 5
+    global.conquest_speed = 5
 
-    global.table_of_properties.acceleration_value = 0.05
+    global.acceleration_value = 0.05
 
-    global.table_of_properties.game_stage = 'lobby'
+    global.game_stage = 'lobby'
 
     global.table_of_tanks = {}
 
@@ -69,7 +69,7 @@
 
         local force = game.forces.force_player_one
 
-        if global.table_of_properties[ force.name ] == nil then global.table_of_properties[ force.name ] = { name = force.name, enemy = 'force_player_two', icon = '☠', available_tickets = global.table_of_properties.amount_of_tickets } end
+        if global.table_of_properties[ force.name ] == nil then global.table_of_properties[ force.name ] = { name = force.name, enemy = 'force_player_two', icon = '☠', available_tickets = global.amount_of_tickets } end
 
         force.set_friend( 'force_biter_two', true )
 
@@ -79,7 +79,7 @@
 
         local force = game.forces.force_player_two
 
-        if global.table_of_properties[ force.name ] == nil then global.table_of_properties[ force.name ] = { name = force.name, enemy = 'force_player_one', icon = '☢', available_tickets = global.table_of_properties.amount_of_tickets } end
+        if global.table_of_properties[ force.name ] == nil then global.table_of_properties[ force.name ] = { name = force.name, enemy = 'force_player_one', icon = '☢', available_tickets = global.amount_of_tickets } end
 
         force.set_friend( 'force_biter_one', true )
 
@@ -213,9 +213,9 @@
 
         local map_gen_settings = {}
 
-        map_gen_settings.width = global.table_of_properties.size_of_the_battlefield
+        map_gen_settings.width = global.size_of_the_battlefield
 
-        map_gen_settings.height = global.table_of_properties.size_of_the_battlefield
+        map_gen_settings.height = global.size_of_the_battlefield
 
         map_gen_settings.seed = math.random( 1, 2097152 )
 
@@ -259,7 +259,7 @@
 
         if player.gui.top[ 'draw_gui_status_frame' ] then player.gui.top[ 'draw_gui_status_frame' ].destroy() end
 
-        if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
+        if global.game_stage ~= 'ongoing_game' then return end
 
         if player.force.name == 'force_spectator' then return end
 
@@ -299,7 +299,7 @@
 
         element_label.style.font_color = global.table_of_colors.white
 
-        local element_label = element_frame.add( { type = 'label', caption = seconds_to_clock( global.table_of_properties.countdown_in_seconds ) } )
+        local element_label = element_frame.add( { type = 'label', caption = seconds_to_clock( global.countdown_in_seconds ) } )
 
         element_label.style.left_padding = 20
 
@@ -335,7 +335,7 @@
 
         if player.gui.top[ 'draw_gui_spots_frame' ] then player.gui.top[ 'draw_gui_spots_frame' ].destroy() end
 
-        if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
+        if global.game_stage ~= 'ongoing_game' then return end
 
         if player.force.name == 'force_spectator' then return end
 
@@ -431,7 +431,7 @@
 
         if player.gui.center[ 'draw_gui_spawn_button' ] then player.gui.center[ 'draw_gui_spawn_button' ].destroy() end
 
-        -- if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
+        -- if global.game_stage ~= 'ongoing_game' then return end
 
         local element_frame = player.gui.center.add( { type = 'frame', name = 'draw_gui_spawn_button', direction = 'horizontal' } )
 
@@ -777,7 +777,7 @@
 
     local function event_on_click_battle( player )
 
-        if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
+        if global.game_stage ~= 'ongoing_game' then return end
 
         local surface = game.surfaces.tank_conquest
 
@@ -855,7 +855,7 @@
 
         local surface = game.surfaces.nauvis
 
-        if global.table_of_properties.game_stage == 'ongoing_game' then surface = game.surfaces.tank_conquest end
+        if global.game_stage == 'ongoing_game' then surface = game.surfaces.tank_conquest end
 
         if surface.is_chunk_generated( position ) then player.teleport( surface.find_non_colliding_position( 'character', position, 3, 0.5 ), surface ) else player.teleport( position, surface ) end
 
@@ -895,7 +895,7 @@
 
         execute_on_tick( 60, draw_circle_lobby, { game.surfaces.nauvis, 28, { x = 0, y = 0 } } )
 
-        -- global.table_of_properties.game_stage = 'do_nothing'
+        -- global.game_stage = 'do_nothing'
 
     end
 
@@ -915,7 +915,7 @@
 
         if game.tick % 60 == 0 then
 
-            if global.table_of_properties.game_stage == 'ongoing_game' then
+            if global.game_stage == 'ongoing_game' then
 
                 for _, spot in pairs( global.table_of_spots ) do
 
@@ -923,7 +923,7 @@
 
                         local enemy = global.table_of_properties[ spot.properties.force.name ].enemy
 
-                        if global.table_of_properties[ enemy ].available_tickets >= 0 then global.table_of_properties[ enemy ].available_tickets = global.table_of_properties[ enemy ].available_tickets - global.table_of_properties.acceleration_value end
+                        if global.table_of_properties[ enemy ].available_tickets >= 0 then global.table_of_properties[ enemy ].available_tickets = global.table_of_properties[ enemy ].available_tickets - global.acceleration_value end
 
                     end
 
@@ -949,9 +949,9 @@
 
                         end
 
-                        if spot.properties.force.name == 'neutral' or spot.properties.force.name == player.force.name and spot.properties.value < 100 then spot.properties.value = spot.properties.value + 1 * global.table_of_properties.conquest_speed end
+                        if spot.properties.force.name == 'neutral' or spot.properties.force.name == player.force.name and spot.properties.value < 100 then spot.properties.value = spot.properties.value + 1 * global.conquest_speed end
 
-                        if spot.properties.force.name ~= player.force.name and spot.properties.value > 0 then spot.properties.value = spot.properties.value - 1 * global.table_of_properties.conquest_speed end
+                        if spot.properties.force.name ~= player.force.name and spot.properties.value > 0 then spot.properties.value = spot.properties.value - 1 * global.conquest_speed end
 
                         if spot.properties.value == 0 then spot.properties.force.name = 'neutral' end
 
@@ -967,27 +967,27 @@
 
                 end
 
-                if global.table_of_properties.countdown_in_seconds == 60 then game.print( 'The round is in the hot phase, there are still 60 seconds left.' ) end
+                if global.countdown_in_seconds == 60 then game.print( 'The round is in the hot phase, there are still 60 seconds left.' ) end
 
-                if global.table_of_properties.countdown_in_seconds >= 0 and #game.forces.force_player_one.connected_players > 0 or #game.forces.force_player_two.connected_players > 0 then
+                if global.countdown_in_seconds >= 0 and #game.forces.force_player_one.connected_players > 0 or #game.forces.force_player_two.connected_players > 0 then
 
-                    global.table_of_properties.countdown_in_seconds = global.table_of_properties.countdown_in_seconds - 1
+                    global.countdown_in_seconds = global.countdown_in_seconds - 1
 
                 end
 
-                if global.table_of_properties.countdown_in_seconds < 0 or global.table_of_properties.force_player_one.available_tickets < 0 or global.table_of_properties.force_player_two.available_tickets < 0 then
+                if global.countdown_in_seconds < 0 or global.force_player_one.available_tickets < 0 or global.force_player_two.available_tickets < 0 then
 
-                    if global.table_of_properties.force_player_one.available_tickets == global.table_of_properties.force_player_two.available_tickets then
+                    if global.force_player_one.available_tickets == global.force_player_two.available_tickets then
 
                         game.print( 'The battle is over. The round ended in a draw.' )
 
-                    elseif global.table_of_properties.force_player_one.available_tickets > global.table_of_properties.force_player_two.available_tickets then
+                    elseif global.force_player_one.available_tickets > global.force_player_two.available_tickets then
 
-                        game.print( 'The battle is over. Force ' .. global.table_of_properties.force_player_one.icon .. ' has won the round.' )
+                        game.print( 'The battle is over. Force ' .. global.force_player_one.icon .. ' has won the round.' )
 
                     else
 
-                        game.print( 'The battle is over. Force ' .. global.table_of_properties.force_player_two.icon .. ' has won the round.' )
+                        game.print( 'The battle is over. Force ' .. global.force_player_two.icon .. ' has won the round.' )
 
                     end
 
@@ -997,15 +997,15 @@
 
                     global.table_of_scores = {}
 
-                    global.table_of_properties.force_player_one.available_tickets = global.table_of_properties.amount_of_tickets
+                    global.force_player_one.available_tickets = global.amount_of_tickets
 
-                    global.table_of_properties.force_player_two.available_tickets = global.table_of_properties.amount_of_tickets
+                    global.force_player_two.available_tickets = global.amount_of_tickets
 
-                    global.table_of_properties.countdown_in_seconds = 28800
+                    global.countdown_in_seconds = 28800
 
-                    global.table_of_properties.wait_in_seconds = 15
+                    global.wait_in_seconds = 15
 
-                    global.table_of_properties.game_stage = 'lobby'
+                    global.game_stage = 'lobby'
 
                     game.reset_time_played()
 
@@ -1041,7 +1041,7 @@
 
             end
 
-            if global.table_of_properties.game_stage == 'regenerate_facilities' then
+            if global.game_stage == 'regenerate_facilities' then
 
                 local table_of_ores = shuffle( global.table_of_ores )
 
@@ -1099,7 +1099,7 @@
 
                 game.print( 'A new battlefield was created. Make yourself comfortable, but be vigilant.' )
 
-                global.table_of_properties.game_stage = 'ongoing_game'
+                global.game_stage = 'ongoing_game'
 
                 for _, player in pairs( game.connected_players ) do
 
@@ -1117,7 +1117,7 @@
 
             end
 
-            if global.table_of_properties.game_stage == 'preparing_spawn_positions' then
+            if global.game_stage == 'preparing_spawn_positions' then
 
                 game.forces.force_player_one.set_spawn_position( { x = - 500, y = 0 }, game.surfaces.tank_conquest )
 
@@ -1139,15 +1139,15 @@
 
                 end
 
-                global.table_of_properties.game_stage = 'regenerate_facilities'
+                global.game_stage = 'regenerate_facilities'
 
             end
 
-            if global.table_of_properties.game_stage == 'check_the_process_of_creating_the_map' then
+            if global.game_stage == 'check_the_process_of_creating_the_map' then
 
                 if game.surfaces.tank_conquest.is_chunk_generated( { x = 0, y = 0 } ) then
 
-                    global.table_of_properties.game_stage = 'preparing_spawn_positions'
+                    global.game_stage = 'preparing_spawn_positions'
 
                 else
 
@@ -1165,27 +1165,27 @@
 
             end
 
-            if global.table_of_properties.game_stage == 'regenerate_battlefield' and global.table_of_properties.wait_in_seconds == 0 then
+            if global.game_stage == 'regenerate_battlefield' and global.wait_in_seconds == 0 then
 
                 initialize_surface()
 
                 game.surfaces.tank_conquest.force_generate_chunk_requests()
 
-                global.table_of_properties.game_stage = 'check_the_process_of_creating_the_map'
+                global.game_stage = 'check_the_process_of_creating_the_map'
 
             end
 
-            if global.table_of_properties.game_stage == 'lobby' then
+            if global.game_stage == 'lobby' then
 
-                if #game.connected_players >= global.table_of_properties.required_number_of_players and global.table_of_properties.wait_in_seconds > 0 then
+                if #game.connected_players >= global.required_number_of_players and global.wait_in_seconds > 0 then
 
-                    if global.table_of_properties.wait_in_seconds % 10 == 0 then game.print( 'The round starts in ' .. global.table_of_properties.wait_in_seconds .. ' seconds.' ) end
+                    if global.wait_in_seconds % 10 == 0 then game.print( 'The round starts in ' .. global.wait_in_seconds .. ' seconds.' ) end
 
-                    global.table_of_properties.wait_in_seconds = global.table_of_properties.wait_in_seconds - 1
+                    global.wait_in_seconds = global.wait_in_seconds - 1
 
                 end
 
-                if global.table_of_properties.wait_in_seconds == 0 then global.table_of_properties.game_stage = 'regenerate_battlefield' end
+                if global.wait_in_seconds == 0 then global.game_stage = 'regenerate_battlefield' end
 
             end
 
@@ -1327,7 +1327,7 @@
 
     local function on_player_changed_position( event )
 
-        if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
+        if global.game_stage ~= 'ongoing_game' then return end
 
         local player = game.players[ event.player_index ]
 
@@ -1361,7 +1361,7 @@
 
     local function on_player_respawned( event )
 
-        if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
+        if global.game_stage ~= 'ongoing_game' then return end
 
         local player = game.players[ event.player_index ]
 
@@ -1383,7 +1383,7 @@
 
     local function on_player_died( event )
 
-        if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
+        if global.game_stage ~= 'ongoing_game' then return end
 
         local player = game.players[ event.player_index ]
 
@@ -1483,7 +1483,7 @@
 
         global.table_of_settings[ player.index ] = nil
 
-        if global.table_of_properties.game_stage ~= 'ongoing_game' then return end
+        if global.game_stage ~= 'ongoing_game' then return end
 
         player_icon_remove( player )
 
@@ -1521,7 +1521,7 @@
 
         -- if player.admin then draw_gui_spawn_button( player ) end
 
-        if global.table_of_properties.game_stage == 'ongoing_game' then
+        if global.game_stage == 'ongoing_game' then
 
             draw_gui_menu_button( player )
 

@@ -13,29 +13,31 @@
 
     global.table_of_properties = {}
 
-    global.table_of_properties.entry_point = nil
+    global.surface_entry_point = nil
 
-    global.table_of_properties.required_number_of_players = 2
+    global.required_number_of_players = 2
 
-    global.table_of_properties.countdown_in_ticks = 54000
+    global.countdown_in_ticks = 54000
 
-    global.table_of_properties.battle_tick = 0
+    global.battle_tick = 0
 
-    global.table_of_properties.wait_in_seconds = 15
+    global.wait_in_seconds = 15
 
-    global.table_of_properties.arena_size = 1000
+    global.arena_size = 1000
 
-    global.table_of_properties.distance_to_orbit = 0
+    global.distance_to_orbit = 0
 
-    global.table_of_properties.orbit_reduction_interval = 0
+    global.orbit_reduction_interval = 0
 
-    global.table_of_properties.arena_tree_chance = 0
+    global.arena_tree_chance = 0
 
-    global.table_of_properties.arena_tree_noise = 0
+    global.arena_tree_noise = 0
 
-    global.table_of_properties.loot_box_chance = 1000
+    global.loot_box_chance = 1000
 
-    global.table_of_properties.game_stage = 'lobby'
+    global.noise_seed = nil
+
+    global.game_stage = 'lobby'
 
     global.table_of_players = {}
 
@@ -95,9 +97,9 @@
 
         local map_gen_settings = {}
 
-        map_gen_settings.width = global.table_of_properties.arena_size
+        map_gen_settings.width = global.arena_size
 
-        map_gen_settings.height = global.table_of_properties.arena_size
+        map_gen_settings.height = global.arena_size
 
         map_gen_settings.seed = math.random( 1, 2097152 )
 
@@ -139,8 +141,6 @@
 
     local function initialize_surface_customize()
 
-        global.table_of_properties.noise_seed = nil
-
         local tree_raffle = {}
 
         for _, entity in pairs( game.entity_prototypes ) do
@@ -151,9 +151,9 @@
 
         global.entity_tree = tree_raffle[ math.random( 1, #tree_raffle ) ]
 
-        global.table_of_properties.arena_tree_chance = math.random( 4, 20 )
+        global.arena_tree_chance = math.random( 4, 20 )
 
-        global.table_of_properties.arena_tree_noise = math.random( 0, 75 ) * 0.01
+        global.arena_tree_noise = math.random( 0, 75 ) * 0.01
 
         local entity_raffle = {}
 
@@ -175,7 +175,7 @@
 
     local function get_noise( name, position )
 
-        local seed = global.table_of_properties.noise_seed
+        local seed = global.noise_seed
 
         local noise = {}
 
@@ -221,7 +221,7 @@
 
     local function get_valid_random_spawn_position( surface )
 
-        local distance_to_orbit = global.table_of_properties.distance_to_orbit - 50
+        local distance_to_orbit = global.distance_to_orbit - 50
 
         if distance_to_orbit < 16 then return { x = 16, y = 0 } end
 
@@ -247,7 +247,7 @@
 
         end
 
-        if math.random( 1, global.table_of_properties.arena_tree_chance ) == 1 and noise_one > global.table_of_properties.arena_tree_noise then
+        if math.random( 1, global.arena_tree_chance ) == 1 and noise_one > global.arena_tree_noise then
 
             return surface.create_entity( { name = global.entity_tree, position = tile_position } )
 
@@ -357,15 +357,15 @@
 
     end
 
-    local function blow_up_the_ground( center_position )
+    local function blow_up_the_ground( position_of_center )
 
         local table_of_items = {}
 
         for x = -74, 74 do for y = -74, 74 do
 
-            local tile_position = { x = center_position.x + x, y = center_position.y + y }
+            local tile_position = { x = position_of_center.x + x, y = position_of_center.y + y }
 
-            local distance_to_center = math.ceil( math.sqrt( ( tile_position.x - center_position.x ) ^ 2 + ( tile_position.y - center_position.y ) ^ 2 ) )
+            local distance_to_center = math.ceil( math.sqrt( ( tile_position.x - position_of_center.x ) ^ 2 + ( tile_position.y - position_of_center.y ) ^ 2 ) )
 
             if distance_to_center <= 37 then
 
@@ -429,11 +429,11 @@
 
     local function do_shrink_circle()
 
-        local distance_to_orbit = global.table_of_properties.distance_to_orbit
+        local distance_to_orbit = global.distance_to_orbit
 
         if distance_to_orbit <= 0 then return end
 
-        local center_position = { x = 0, y = 0 }
+        local position_of_center = { x = 0, y = 0 }
 
         local table_of_items = {}
 
@@ -441,7 +441,7 @@
 
         for angle = 0, 360, 0.35 do
 
-            local tile_position = angle_to_position( center_position, angle, distance_to_orbit )
+            local tile_position = angle_to_position( position_of_center, angle, distance_to_orbit )
 
             for x = -1, 1, 1 do for y = -1, 1, 1 do
 
@@ -451,11 +451,11 @@
 
             end end
 
-            next_tick = game.tick + math.random( 1, global.table_of_properties.orbit_reduction_interval )
+            next_tick = game.tick + math.random( 1, global.orbit_reduction_interval )
 
         end
 
-        global.table_of_properties.distance_to_orbit = global.table_of_properties.distance_to_orbit - 1
+        global.distance_to_orbit = global.distance_to_orbit - 1
 
     end
 
@@ -567,7 +567,7 @@
 
         if player.character then player.character.disable_flashlight() end
 
-        local surface = global.table_of_properties.entry_point
+        local surface = global.surface_entry_point
 
         if surface.is_chunk_generated( { x = 0, y = 0 } ) then player.teleport( surface.find_non_colliding_position( 'character', { x = 0, y = 0 }, 9, 0.5 ), surface ) else player.teleport( { x = 0, y = 0 }, surface ) end
 
@@ -603,13 +603,13 @@
 
         initialize_forces()
 
-        global.table_of_properties.entry_point = game.surfaces.nauvis
+        global.surface_entry_point = game.surfaces.nauvis
 
-        global.table_of_properties.distance_to_orbit = global.table_of_properties.arena_size / 2
+        global.distance_to_orbit = global.arena_size / 2
 
-        global.table_of_properties.orbit_reduction_interval = math.ceil( global.table_of_properties.countdown_in_ticks / global.table_of_properties.distance_to_orbit )
+        global.orbit_reduction_interval = math.ceil( global.countdown_in_ticks / global.distance_to_orbit )
 
-        -- global.table_of_properties.game_stage = 'do_nothing'
+        -- global.game_stage = 'do_nothing'
 
     end
 
@@ -617,175 +617,181 @@
 
     local function on_tick( event )
 
-        if game.tick % 60 == 0 then
+        if global.game_stage == 'ongoing_game' then
 
-            if global.table_of_properties.game_stage == 'round_is_over' then
+            local battle_tick = game.tick - global.battle_tick
 
-                game.reset_time_played()
-
-                global.table_of_properties.distance_to_orbit = global.table_of_properties.arena_size / 2
-
-                global.table_of_properties.wait_in_seconds = 15
-
-                global.table_of_properties.entry_point = game.surfaces.nauvis
-
-                global.table_of_properties.game_stage = 'lobby'
+            if battle_tick > 0 and battle_tick % 10800 == 0 then
 
                 for _, player in pairs( game.connected_players ) do
 
-                    event_on_click_lobby( player )
-
-                    show_gui_player_scoreboard( player )
+                    if global.table_of_players[ player.index ].in_battle then launch_atomic_rocket( player ) end
 
                 end
 
             end
 
-            if global.table_of_properties.game_stage == 'ongoing_game' then
+            if game.tick % global.orbit_reduction_interval == 0 then
 
-                local number_of_players = 0
-
-                for _, player in pairs( global.table_of_players ) do
-
-                    if player.in_battle then number_of_players = number_of_players + 1 end
-
-                end
-
-                if number_of_players <= 1 then
-
-                    if number_of_players == 1 then
-
-                        local player_index = nil
-
-                        for index, player in pairs( global.table_of_players ) do
-
-                            if player.in_battle then player_index = index end
-
-                        end
-
-                        global.table_of_players[ player_index ].won_rounds = global.table_of_players[ player_index ].won_rounds + 1
-
-                        game.print( game.players[ player_index ].name .. ' has won the battle!', { r = 150, g = 150, b = 0 } )
-
-                    end
-
-                    if number_of_players == 0 then
-
-                        game.print( 'No alive players! Round ends in a draw!', { r = 150, g = 150, b = 0 } )
-
-                    end
-
-                    global.table_of_properties.game_stage = 'round_is_over'
-
-                end
-
-            end
-
-            if global.table_of_properties.game_stage == 'teleport_the_players' then
-
-                for _, player in pairs( game.connected_players ) do
-
-                    if global.table_of_players[ player.index ].is_spectator then
-
-                        event_on_click_lobby( player )
-
-                    else
-
-                        event_on_click_battle( player )
-
-                    end
-
-                    hide_gui_player_scoreboard( player )
-
-                end
-
-                global.table_of_properties.battle_tick = game.tick
-
-                global.table_of_properties.game_stage = 'ongoing_game'
-
-            end
-
-            if global.table_of_properties.game_stage == 'check_the_number_of_players_who_want_to_fight' then
-
-                local number_of_players = 0
-
-                for _, player in pairs( global.table_of_players ) do
-
-                    if not player.is_spectator then number_of_players = number_of_players + 1 end
-
-                end
-
-                if number_of_players >= global.table_of_properties.required_number_of_players then
-
-                    global.table_of_properties.game_stage = 'teleport_the_players'
-
-                end
-
-            end
-
-            if global.table_of_properties.game_stage == 'preparing_spawn_positions' then
-
-                execute_on_tick( game.tick + 1, draw_circle_lobby, { game.surfaces.tank_battles, 14, { x = 0, y = 0 } } )
-
-                global.table_of_properties.game_stage = 'check_the_number_of_players_who_want_to_fight'
-
-            end
-
-            if global.table_of_properties.game_stage == 'check_the_process_of_creating_the_surface' then
-
-                if game.surfaces.tank_battles.is_chunk_generated( { x = 0, y = 0 } ) then
-
-                    global.table_of_properties.entry_point = game.surfaces.tank_battles
-
-                    global.table_of_properties.game_stage = 'preparing_spawn_positions'
-
-                else
-
-                    game.surfaces.tank_battles.request_to_generate_chunks( { x = 0, y = 0 }, 1 )
-
-                end
-
-            end
-
-            if global.table_of_properties.game_stage == 'regenerate_the_customize_surface' then
-
-                initialize_surface_standard()
-
-                initialize_surface_customize()
-
-                global.table_of_properties.game_stage = 'check_the_process_of_creating_the_surface'
-
-            end
-
-            if global.table_of_properties.game_stage == 'lobby' then
-
-                if #game.connected_players >= global.table_of_properties.required_number_of_players and global.table_of_properties.wait_in_seconds > 0 then
-
-                    if global.table_of_properties.wait_in_seconds % 10 == 0 then game.print( 'The round starts in ' .. global.table_of_properties.wait_in_seconds .. ' seconds.' ) end
-
-                    global.table_of_properties.wait_in_seconds = global.table_of_properties.wait_in_seconds - 1
-
-                end
-
-                if global.table_of_properties.wait_in_seconds == 0 then global.table_of_properties.game_stage = 'regenerate_the_customize_surface' end
+                do_shrink_circle()
 
             end
 
         end
 
-        local battle_tick = game.tick - global.table_of_properties.battle_tick
+        if game.tick % 60 ~= 0 then return end
 
-        if battle_tick > 0 and battle_tick % 10800 == 0 and global.table_of_properties.game_stage == 'ongoing_game' then
+        if global.game_stage == 'round_is_over' then
+
+            game.reset_time_played()
+
+            global.distance_to_orbit = global.arena_size / 2
+
+            global.wait_in_seconds = 15
+
+            global.surface_entry_point = game.surfaces.nauvis
+
+            global.game_stage = 'lobby'
 
             for _, player in pairs( game.connected_players ) do
 
-                if global.table_of_players[ player.index ].in_battle then launch_atomic_rocket( player ) end
+                event_on_click_lobby( player )
+
+                show_gui_player_scoreboard( player )
 
             end
 
         end
 
-        if game.tick % global.table_of_properties.orbit_reduction_interval == 0 and global.table_of_properties.game_stage == 'ongoing_game' then do_shrink_circle() end
+        if global.game_stage == 'ongoing_game' then
+
+            local number_of_players = 0
+
+            for _, player in pairs( global.table_of_players ) do
+
+                if player.in_battle then number_of_players = number_of_players + 1 end
+
+            end
+
+            if number_of_players <= 1 then
+
+                if number_of_players == 1 then
+
+                    local player_index = nil
+
+                    for index, player in pairs( global.table_of_players ) do
+
+                        if player.in_battle then player_index = index end
+
+                    end
+
+                    global.table_of_players[ player_index ].won_rounds = global.table_of_players[ player_index ].won_rounds + 1
+
+                    game.print( game.players[ player_index ].name .. ' has won the battle!', { r = 150, g = 150, b = 0 } )
+
+                end
+
+                if number_of_players == 0 then
+
+                    game.print( 'No alive players! Round ends in a draw!', { r = 150, g = 150, b = 0 } )
+
+                end
+
+                global.game_stage = 'round_is_over'
+
+            end
+
+        end
+
+        if global.game_stage == 'teleport_the_players' then
+
+            for _, player in pairs( game.connected_players ) do
+
+                if global.table_of_players[ player.index ].is_spectator then
+
+                    event_on_click_lobby( player )
+
+                else
+
+                    event_on_click_battle( player )
+
+                end
+
+                hide_gui_player_scoreboard( player )
+
+            end
+
+            global.battle_tick = game.tick
+
+            global.game_stage = 'ongoing_game'
+
+        end
+
+        if global.game_stage == 'check_the_number_of_players_who_want_to_fight' then
+
+            local number_of_players = 0
+
+            for _, player in pairs( global.table_of_players ) do
+
+                if not player.is_spectator then number_of_players = number_of_players + 1 end
+
+            end
+
+            if number_of_players >= global.required_number_of_players then
+
+                global.game_stage = 'teleport_the_players'
+
+            end
+
+        end
+
+        if global.game_stage == 'preparing_spawn_positions' then
+
+            execute_on_tick( game.tick + 1, draw_circle_lobby, { game.surfaces.tank_battles, 14, { x = 0, y = 0 } } )
+
+            global.surface_entry_point = game.surfaces.tank_battles
+
+            global.game_stage = 'check_the_number_of_players_who_want_to_fight'
+
+        end
+
+        if global.game_stage == 'check_the_process_of_creating_the_surface' then
+
+            if game.surfaces.tank_battles.is_chunk_generated( { x = 0, y = 0 } ) then
+
+                global.game_stage = 'preparing_spawn_positions'
+
+            else
+
+                game.surfaces.tank_battles.request_to_generate_chunks( { x = 0, y = 0 }, 1 )
+
+            end
+
+        end
+
+        if global.game_stage == 'regenerate_the_customize_surface' then
+
+            initialize_surface_standard()
+
+            initialize_surface_customize()
+
+            global.game_stage = 'check_the_process_of_creating_the_surface'
+
+        end
+
+        if global.game_stage == 'lobby' then
+
+            if #game.connected_players >= global.required_number_of_players and global.wait_in_seconds > 0 then
+
+                if global.wait_in_seconds % 10 == 0 then game.print( 'The round starts in ' .. global.wait_in_seconds .. ' seconds.' ) end
+
+                global.wait_in_seconds = global.wait_in_seconds - 1
+
+            end
+
+            if global.wait_in_seconds == 0 then global.game_stage = 'regenerate_the_customize_surface' end
+
+        end
 
     end
 
@@ -831,7 +837,7 @@
 
         end
 
-        if player.online_time == 0 and global.table_of_properties.game_stage == 'ongoing_game' then
+        if player.online_time == 0 and global.game_stage == 'ongoing_game' then
 
             event_on_click_battle( player )
 
@@ -961,7 +967,7 @@
 
         if event.surface.name == 'nauvis' then return end
 
-        if not global.table_of_properties.noise_seed then global.table_of_properties.noise_seed = math.random( 1, 2097152 ) end
+        if not global.noise_seed then global.noise_seed = math.random( 1, 2097152 ) end
 
         local chunk_position = { x = event.area.left_top.x, y = event.area.left_top.y }
 
