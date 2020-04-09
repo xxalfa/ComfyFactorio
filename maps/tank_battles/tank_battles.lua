@@ -129,12 +129,6 @@
 
          end
 
-        game.surfaces.tank_battles.daytime = 0.15
-
-        game.surfaces.tank_battles.always_day = false
-
-        game.surfaces.tank_battles.freeze_daytime = false
-
         game.surfaces.tank_battles.force_generate_chunk_requests()
 
     end
@@ -223,9 +217,9 @@
 
         local distance_to_orbit = global.distance_to_orbit - 50
 
-        if distance_to_orbit < 16 then return { x = 16, y = 0 } end
+        if distance_to_orbit < 100 then return { x = 16, y = 0 } end
 
-        local position = angle_to_position( { x = 0, y = 0 }, math.random( 0, 360 ), math.random( 16, distance_to_orbit ) )
+        local position = angle_to_position( { x = 0, y = 0 }, math.random( 0, 360 ), math.random( 100, distance_to_orbit ) )
 
         return position
 
@@ -659,6 +653,8 @@
 
                 show_gui_player_scoreboard( player )
 
+                hide_gui_player_camera( player )
+
             end
 
         end
@@ -687,13 +683,13 @@
 
                     global.table_of_players[ player_index ].won_rounds = global.table_of_players[ player_index ].won_rounds + 1
 
-                    game.print( game.players[ player_index ].name .. ' has won the battle!', { r = 150, g = 150, b = 0 } )
+                    game.print( game.players[ player_index ].name .. ' has won the battle!', { r = 1, g = 1, b = 1 } )
 
                 end
 
                 if number_of_players == 0 then
 
-                    game.print( 'No alive players! Round ends in a draw!', { r = 150, g = 150, b = 0 } )
+                    game.print( 'No alive players! Round ends in a draw!', { r = 1, g = 1, b = 1 } )
 
                 end
 
@@ -720,6 +716,12 @@
                 hide_gui_player_scoreboard( player )
 
             end
+
+            game.surfaces.tank_battles.daytime = 0.15
+
+            game.surfaces.tank_battles.always_day = false
+
+            game.surfaces.tank_battles.freeze_daytime = false
 
             global.battle_tick = game.tick
 
@@ -1000,6 +1002,26 @@
     end
 
     event.add( defines.events.on_marked_for_deconstruction, on_marked_for_deconstruction )
+
+    local function on_picked_up_item( event )
+
+        if global.game_stage ~= 'ongoing_game' then return end
+
+        if event.item_stack.name == 'stone' then
+
+            local player = game.players[ event.player_index ]
+
+            local player_inventory = player.get_inventory( defines.inventory.character_main )
+
+            local item_count = player_inventory.get_item_count( 'stone' )
+
+            if item_count > 0 then player_inventory.remove( { name = 'stone', count = 1 } ) end
+
+        end
+
+    end
+
+    event.add( defines.events.on_picked_up_item, on_picked_up_item )
 
     require 'maps.tank_battles.module_player_color'
 

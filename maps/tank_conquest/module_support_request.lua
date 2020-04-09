@@ -7,31 +7,31 @@
 
     local max_support_request_length = 1000
 
-    local name_button_headline = gui.uid_name()
+    local name_headline_button = gui.uid_name()
 
-    local name_frame_main = gui.uid_name()
+    local name_main_frame = gui.uid_name()
 
     local name_textarea_content = gui.uid_name()
 
-    local name_button_submit = gui.uid_name()
+    local name_main_button_submit = gui.uid_name()
 
     local name_label_counter = gui.uid_name()
 
-    local name_button_close = gui.uid_name()
+    local name_main_button_close = gui.uid_name()
 
-    local function draw_button_headline( player )
+    local function draw_headline_button( player )
 
-        if player.gui.top[ name_button_headline ] then player.gui.top[ name_button_headline ].destroy() end
+        if player.gui.top[ name_headline_button ] then player.gui.top[ name_headline_button ].destroy() end
 
-        player.gui.top.add( { type = 'sprite-button', name = name_button_headline, sprite = 'entity/compilatron', tooltip = 'Comfylatron' } )
+        player.gui.top.add( { type = 'sprite-button', name = name_headline_button, sprite = 'entity/compilatron', tooltip = 'Comfylatron' } )
 
     end
 
-    local function draw_frame_main( player )
+    local function draw_main_frame( player )
 
-        if player.gui.center[ name_frame_main ] then player.gui.center[ name_frame_main ].destroy() end
+        if player.gui.center[ name_main_frame ] then player.gui.center[ name_main_frame ].destroy() end
 
-        local element_frame = player.gui.center.add( { type = 'frame', name = name_frame_main, direction = 'vertical' } )
+        local element_frame = player.gui.center.add( { type = 'frame', name = name_main_frame, direction = 'vertical' } )
 
         local element_flow = element_frame.add( { type = 'flow' } )
 
@@ -67,7 +67,7 @@
 
         element_flow.style.horizontally_stretchable = true
 
-        local element_button = element_flow.add( { type = 'button', name = name_button_submit, style = 'rounded_button', caption = 'SUBMIT' } )
+        local element_button = element_flow.add( { type = 'button', name = name_main_button_submit, style = 'rounded_button', caption = 'SUBMIT' } )
 
         element_button.style.minimal_width = 150
 
@@ -83,7 +83,7 @@
 
         element_label.style.horizontal_align = 'center'
 
-        local element_button = element_flow.add( { type = 'button', name = name_button_close, style = 'rounded_button', caption = 'CLOSE' } )
+        local element_button = element_flow.add( { type = 'button', name = name_main_button_close, style = 'rounded_button', caption = 'CLOSE' } )
 
         element_button.style.minimal_width = 150
 
@@ -93,31 +93,31 @@
 
         local player = game.players[ event.player_index ]
 
-        if event.element.valid and event.element.name == name_button_headline then
+        if event.element.valid and event.element.name == name_headline_button then
 
-            if player.gui.center[ name_frame_main ] then
+            if player.gui.center[ name_main_frame ] then
 
-                if player.gui.center[ name_frame_main ].visible == true then
+                if player.gui.center[ name_main_frame ].visible == true then
 
-                    player.gui.center[ name_frame_main ].visible = false
+                    player.gui.center[ name_main_frame ].visible = false
 
                 else
 
-                    player.gui.center[ name_frame_main ].visible = true
+                    player.gui.center[ name_main_frame ].visible = true
 
-                    player.gui.center[ name_frame_main ].children[ 2 ].focus()
+                    player.gui.center[ name_main_frame ].children[ 2 ].focus()
 
                 end
 
             else
 
-                draw_frame_main( player )
+                draw_main_frame( player )
 
             end
 
         end
 
-        if event.element.valid and event.element.name == name_button_submit then
+        if event.element.valid and event.element.name == name_main_button_submit then
 
             local element_textarea_content = event.element.parent.parent.children[ 2 ]
 
@@ -147,13 +147,13 @@
 
             print_override.raw_print( '[SUPPORT]' .. player.name .. '[REQUEST]' .. element_textarea_content.text )
 
-            player.gui.center[ name_frame_main ].visible = false
+            player.gui.center[ name_main_frame ].visible = false
 
         end
 
-        if event.element.valid and event.element.name == name_button_close then
+        if event.element.valid and event.element.name == name_main_button_close then
 
-            player.gui.center[ name_frame_main ].visible = false
+            player.gui.center[ name_main_frame ].visible = false
 
         end
 
@@ -183,7 +183,7 @@
 
         local player = game.players[ event.player_index ]
 
-        draw_button_headline( player )
+        draw_headline_button( player )
 
     end
 

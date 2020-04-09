@@ -3,31 +3,37 @@
 
     local gui = require 'utils.gui'
 
-    local name_button_headline = gui.uid_name()
+    local name_headline_button = gui.uid_name()
 
-    local name_frame_main = gui.uid_name()
+    local name_main_frame = gui.uid_name()
 
-    local name_button_close = gui.uid_name()
+    local name_main_button_close = gui.uid_name()
 
-    local name_button_submit = gui.uid_name()
+    local name_camera_frame = gui.uid_name()
 
-    local function draw_button_headline( player )
+    local name_camera_observation = gui.uid_name()
 
-        if player.gui.top[ name_button_headline ] then player.gui.top[ name_button_headline ].destroy() end
+    local name_camera_button_close = gui.uid_name();
 
-        local element_button = player.gui.top.add( { type = 'button', name = name_button_headline, caption = 'SCOREBOARD', tooltip = '' } )
+    local table_of_observations = {}
+
+    local function draw_headline_button( player )
+
+        if player.gui.top[ name_headline_button ] then player.gui.top[ name_headline_button ].destroy() end
+
+        local element_button = player.gui.top.add( { type = 'button', name = name_headline_button, caption = 'SCOREBOARD', tooltip = '' } )
 
         element_button.style.height = 38
 
     end
 
-    local function draw_frame_main( player )
+    local function draw_main_frame( player )
 
-        if player.gui.center[ name_frame_main ] then player.gui.center[ name_frame_main ].destroy() end
+        if player.gui.center[ name_main_frame ] then player.gui.center[ name_main_frame ].destroy() end
 
-        local element_frame = player.gui.center.add( { type = 'frame', name = name_frame_main, caption = 'Scoreboard', direction = 'vertical' } )
+        local element_frame = player.gui.center.add( { type = 'frame', name = name_main_frame, caption = 'Scoreboard', direction = 'vertical' } )
 
-        local element_table = element_frame.add( { type = 'table', column_count = 6, draw_horizontal_lines = true } )
+        local element_table = element_frame.add( { type = 'table', column_count = 7, draw_horizontal_lines = true } )
 
         element_table.style.padding = 0
 
@@ -51,6 +57,8 @@
 
         element_table.add( { type = 'label', caption = 'Is spectator' } )
 
+        element_table.add( { type = 'label', caption = '' } )
+
         local table_of_scores = {}
 
         for _, player in pairs( game.connected_players ) do
@@ -61,11 +69,13 @@
 
             color = { r = color.r * 0.6 + 0.4, g = color.g * 0.6 + 0.4, b = color.b * 0.6 + 0.4, a = 1 }
 
-            table.insert( table_of_scores, { name = player.name, won_rounds = player_properties.won_rounds, player_killed = player_properties.player_killed, in_battle = player_properties.in_battle, is_spectator = player_properties.is_spectator, color = color } )
+            table.insert( table_of_scores, { index = player.index, name = player.name, won_rounds = player_properties.won_rounds, player_killed = player_properties.player_killed, in_battle = player_properties.in_battle, is_spectator = player_properties.is_spectator, color = color } )
 
         end
 
-        for index = 1, #table_of_scores do
+        local number_of_scores = #table_of_scores
+
+        for index = 1, number_of_scores do
 
             if not table_of_scores[ index + 1 ] then break end
 
@@ -81,7 +91,7 @@
 
         end
 
-        for index = 1, #table_of_scores do
+        for index = 1, number_of_scores do
 
             element_table.add( { type = 'label', caption = index } )
 
@@ -93,9 +103,19 @@
 
             element_table.add( { type = 'label', caption = table_of_scores[ index ].player_killed } )
 
-            element_table.add( { type = 'label', caption = table_of_scores[ index ].in_battle } )
+            local label_caption = ''
 
-            element_table.add( { type = 'label', caption = table_of_scores[ index ].is_spectator } )
+            if table_of_scores[ index ].in_battle then label_caption = 'yes' else label_caption = 'no' end
+
+            element_table.add( { type = 'label', caption = label_caption } )
+
+            if table_of_scores[ index ].is_spectator then label_caption = 'yes' else label_caption = 'no' end
+
+            element_table.add( { type = 'label', caption = label_caption } )
+
+            local element_button = element_table.add( { type = 'button', name = 'observe_player_' .. table_of_scores[ index ].index, caption = 'OBSERVE' } )
+
+            element_button.style.height = 18
 
         end
 
@@ -123,47 +143,129 @@
 
         element_flow.style.horizontally_stretchable = true
 
-        element_flow.add( { type = 'button', name = name_button_close, style = 'rounded_button', caption = 'CLOSE' } )
+        element_flow.add( { type = 'button', name = name_main_button_close, style = 'rounded_button', caption = 'CLOSE' } )
 
     end
+
+    local function draw_camera_observation_frame( supervisor_index, player_index )
+
+        local supervisor = game.players[ supervisor_index ]
+
+        local player = game.players[ player_index ]
+
+        if supervisor.gui.center[ name_camera_frame ] then supervisor.gui.center[ name_camera_frame ].destroy() end
+
+        local element_frame = supervisor.gui.center.add( { type = 'frame', name = name_camera_frame, direction = 'vertical' } )
+
+        element_frame.style.padding = 0
+
+        local element_camera = element_frame.add( { type = 'camera', name = name_camera_observation, position = player.position, zoom = 0.3 } )
+
+        element_camera.style.width = 832
+
+        element_camera.style.height = 624
+
+        local element_flow = element_frame.add( { type = 'flow' } )
+
+        element_flow.style.horizontal_align = 'right'
+
+        element_flow.style.horizontally_stretchable = true
+
+        element_flow.add( { type = 'button', name = name_camera_button_close, style = 'rounded_button', caption = 'CLOSE' } )
+
+        if not table_of_observations[ supervisor_index ] then table_of_observations[ supervisor_index ] = player_index end
+
+    end
+
+    local function on_tick( event )
+
+        if global.game_stage ~= 'ongoing_game' then return end
+
+        for supervisor_index, player_index in pairs( table_of_observations ) do
+
+            local supervisor = game.players[ supervisor_index ]
+
+            local player = game.players[ player_index ]
+
+            if supervisor.gui.center[ name_camera_frame ] then supervisor.gui.center[ name_camera_frame ].children[ 1 ].position = player.position end
+
+        end
+
+    end
+
+    event.add( defines.events.on_tick, on_tick )
 
     local function on_gui_click( event )
 
         local player = game.players[ event.player_index ]
 
-        if event.element.valid and event.element.name == name_button_headline then
+        if event.element.valid and event.element.name == name_headline_button then
 
-            if player.gui.center[ name_frame_main ] then
+            if player.gui.center[ name_main_frame ] then
 
-                -- if player.gui.center[ name_frame_main ].visible == true then
+                -- if player.gui.center[ name_main_frame ].visible == true then
 
-                --     player.gui.center[ name_frame_main ].visible = false
+                --     player.gui.center[ name_main_frame ].visible = false
 
                 -- else
 
-                --     player.gui.center[ name_frame_main ].visible = true
+                --     player.gui.center[ name_main_frame ].visible = true
 
                 -- end
 
-                player.gui.center[ name_frame_main ].destroy()
+                player.gui.center[ name_main_frame ].destroy()
 
             else
 
-                draw_frame_main( player )
+                draw_main_frame( player )
 
             end
 
         end
 
-        if event.element.valid and event.element.name == name_button_submit then
+        if event.element.valid and event.element.name == name_main_button_close then
 
-            player.gui.center[ name_frame_main ].visible = false
+            player.gui.center[ name_main_frame ].visible = false
 
         end
 
-        if event.element.valid and event.element.name == name_button_close then
+        if string.sub( event.element.name, 1, 14 ) == 'observe_player' then
 
-            player.gui.center[ name_frame_main ].visible = false
+            if global.game_stage == 'ongoing_game' then
+
+                if player.force.name == 'force_spectator' then
+
+                    local observe_player_index = string.sub( event.element.name, 16, string.len( event.element.name ) )
+
+                    if player.index ~= tonumber( observe_player_index ) then
+
+                        player.gui.center[ name_main_frame ].visible = false
+
+                        draw_camera_observation_frame( player.index, observe_player_index )
+
+                    else
+
+                        player.print( 'Wanting to watch yourself sounds nice, but it does not make sense.' )
+
+                    end
+
+                else
+
+                    player.print( 'It borders on cheating while you are still in battle to want to watch someone else.' )
+
+                end
+
+            else
+
+                player.print( 'If you want to watch, nothing is going on right now.' )
+
+            end
+
+        end
+
+        if event.element.valid and event.element.name == name_camera_button_close then
+
+            hide_gui_player_camera( player )
 
         end
 
@@ -175,20 +277,36 @@
 
         local player = game.players[ event.player_index ]
 
-        draw_button_headline( player )
+        draw_headline_button( player )
 
     end
 
     event.add( defines.events.on_player_joined_game, on_player_joined_game )
 
+    local function on_player_left_game( event )
+
+        if table_of_observations[ event.player_index ] then table_of_observations[ event.player_index ] = nil end
+
+    end
+
+    event.add( defines.events.on_player_left_game, on_player_left_game )
+
     function show_gui_player_scoreboard( player )
 
-        draw_frame_main( player )
+        draw_main_frame( player )
 
     end
 
     function hide_gui_player_scoreboard( player )
 
-        if player.gui.center[ name_frame_main ] then player.gui.center[ name_frame_main ].destroy() end
+        if player.gui.center[ name_main_frame ] then player.gui.center[ name_main_frame ].destroy() end
+
+    end
+
+    function hide_gui_player_camera( player )
+
+        if player.gui.center[ name_main_frame ] then player.gui.center[ name_camera_frame ].visible = false end
+
+        if table_of_observations[ player.index ] then table_of_observations[ player.index ] = nil end
 
     end
