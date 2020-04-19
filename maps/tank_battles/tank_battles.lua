@@ -15,7 +15,7 @@
 
     global.surface_entry_point = nil
 
-    global.required_number_of_players = 2
+    global.required_number_of_players = 1
 
     global.countdown_in_ticks = 54000
 
@@ -215,13 +215,11 @@
 
     local function get_valid_random_spawn_position( surface )
 
-        local distance_to_orbit = global.distance_to_orbit - 50
+        local distance_to_orbit = global.distance_to_orbit - 25
 
-        if distance_to_orbit < 100 then return { x = 16, y = 0 } end
+        if distance_to_orbit <= 16 then return { x = 16, y = 0 } end
 
-        local position = angle_to_position( { x = 0, y = 0 }, math.random( 0, 360 ), math.random( 100, distance_to_orbit ) )
-
-        return position
+        return angle_to_position( { x = 0, y = 0 }, math.random( 0, 360 ), math.random( 16, distance_to_orbit ) )
 
     end
 
@@ -455,6 +453,8 @@
 
     local function create_a_tank( player )
 
+        if global.table_of_players[ player.index ] == nil or global.table_of_players[ player.index ].in_battle == false then return end
+
         local position = player.surface.find_non_colliding_position( 'tank', player.position, 32, 4 )
 
         if not position then return { x = 16, y = 0 } end
@@ -627,7 +627,31 @@
 
             if game.tick % global.orbit_reduction_interval == 0 then
 
-                do_shrink_circle()
+                local number_of_players = 0
+
+                for _, player in pairs( global.table_of_players ) do
+
+                    if player.in_battle then number_of_players = number_of_players + 1 end
+
+                end
+
+                if number_of_players >= 1 then do_shrink_circle() end
+
+                if global.distance_to_orbit == 150 then
+
+                    game.print( 'Resuscitation is now disabled, the last survivor wins the round.' )
+
+                    global.orbit_reduction_interval = global.orbit_reduction_interval * 3
+
+                end
+
+                if global.distance_to_orbit == 13 then
+
+                    game.print( 'It seems like players went swimming. The round is now restarted without scoring.' )
+
+                    global.game_stage = 'round_is_over'
+
+                end
 
             end
 
@@ -637,13 +661,17 @@
 
         if global.game_stage == 'round_is_over' then
 
-            game.reset_time_played()
+            -- local version = game.active_mods[ 'base' ]
+
+            game.reset_time_played() -- 0.18
 
             global.distance_to_orbit = global.arena_size / 2
 
-            global.wait_in_seconds = 15
+            global.orbit_reduction_interval = math.ceil( global.countdown_in_ticks / global.distance_to_orbit )
 
             global.surface_entry_point = game.surfaces.nauvis
+
+            global.wait_in_seconds = 15
 
             global.game_stage = 'lobby'
 
@@ -661,17 +689,21 @@
 
         if global.game_stage == 'ongoing_game' then
 
-            local number_of_players = 0
+            local number_of_survivors = 0
+
+            local number_of_fighters = 0
 
             for _, player in pairs( global.table_of_players ) do
 
-                if player.in_battle then number_of_players = number_of_players + 1 end
+                if player.in_battle then number_of_survivors = number_of_survivors + 1 end
+
+                if not player.is_spectator then number_of_fighters = number_of_fighters + 1 end
 
             end
 
-            if number_of_players <= 1 then
+            if number_of_survivors <= 1 and number_of_fighters >= 2 then
 
-                if number_of_players == 1 then
+                if number_of_survivors == 1 then
 
                     local player_index = nil
 
@@ -683,15 +715,13 @@
 
                     global.table_of_players[ player_index ].won_rounds = global.table_of_players[ player_index ].won_rounds + 1
 
-                    game.print( game.players[ player_index ].name .. ' has won the battle!', { r = 1, g = 1, b = 1 } )
+                    global.table_of_players[ player_index ].in_battle = false
+
+                    game.print( game.players[ player_index ].name .. ' has won the round!' )
 
                 end
 
-                if number_of_players == 0 then
-
-                    game.print( 'No alive players! Round ends in a draw!', { r = 1, g = 1, b = 1 } )
-
-                end
+                if number_of_survivors == 0 then game.print( 'No alive players! Round ends in a draw!' ) end
 
                 global.game_stage = 'round_is_over'
 
@@ -783,7 +813,15 @@
 
         if global.game_stage == 'lobby' then
 
-            if #game.connected_players >= global.required_number_of_players and global.wait_in_seconds > 0 then
+            local number_of_players = 0
+
+            for _, player in pairs( global.table_of_players ) do
+
+                if not player.is_spectator then number_of_players = number_of_players + 1 end
+
+            end
+
+            if number_of_players >= global.required_number_of_players and global.wait_in_seconds > 0 then
 
                 if global.wait_in_seconds % 10 == 0 then game.print( 'The round starts in ' .. global.wait_in_seconds .. ' seconds.' ) end
 
@@ -865,7 +903,15 @@
 
         local player = game.players[ event.player_index ]
 
-        event_on_click_lobby( player )
+        if global.distance_to_orbit <= 150 then
+
+            event_on_click_lobby( player )
+
+        else
+
+            event_on_click_battle( player )
+
+        end
 
     end
 
@@ -875,7 +921,17 @@
 
         local player = game.players[ event.player_index ]
 
-        player.ticks_to_respawn = 0
+        destroy_a_tank( player )
+
+        if global.distance_to_orbit <= 150 then
+
+            player.ticks_to_respawn = 0
+
+        else
+
+            player.ticks_to_respawn = 960
+
+        end
 
         local player_name_of_the_causer = nil
 
@@ -955,9 +1011,19 @@
 
         local color = { r = player.color.r * 0.6 + 0.4, g = player.color.g * 0.6 + 0.4, b = player.color.b * 0.6 + 0.4, a = 1 }
 
-        for _, p in pairs( game.connected_players ) do
+        if player.force.name == 'force_spectator' and event.message:find( '%[gps=%s*%-?%d+%,?%s*%-?%d+%]' ) then
 
-            if p.force.name ~= player.force.name  then p.force.print( player.name .. ': '.. event.message, color ) end
+            event.message = event.message:gsub( '%[gps=%s*%-?%d+%,?%s*%-?%d+%]', '' )
+
+            player.print( 'As a spectator, you cannot send location information.' )
+
+        else
+
+            for _, p in pairs( game.connected_players ) do
+
+                if p.force.name ~= player.force.name  then p.force.print( player.name .. ': '.. event.message, color ) end
+
+            end
 
         end
 

@@ -239,7 +239,7 @@
 
                     if player.index ~= tonumber( observe_player_index ) then
 
-                        player.gui.center[ name_main_frame ].visible = false
+                        hide_gui_player_scoreboard( player )
 
                         draw_camera_observation_frame( player.index, observe_player_index )
 
@@ -266,6 +266,8 @@
         if event.element.valid and event.element.name == name_camera_button_close then
 
             hide_gui_player_camera( player )
+
+            show_gui_player_scoreboard( player )
 
         end
 
@@ -305,7 +307,7 @@
 
     function hide_gui_player_camera( player )
 
-        if player.gui.center[ name_main_frame ] then player.gui.center[ name_camera_frame ].visible = false end
+        if player.gui.center[ name_camera_frame ] then player.gui.center[ name_camera_frame ].visible = false end
 
         if table_of_observations[ player.index ] then table_of_observations[ player.index ] = nil end
 

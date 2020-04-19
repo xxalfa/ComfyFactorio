@@ -17,7 +17,7 @@
 
     local function on_entity_damaged( event )
 
-        if event.entity.name == 'wooden-chest' then return end
+        if event.entity.name == 'wooden-chest' or event.entity.name == 'iron-chest' or event.entity.name == 'steel-chest' then return end
 
         if not event.entity.unit_number then return end
 

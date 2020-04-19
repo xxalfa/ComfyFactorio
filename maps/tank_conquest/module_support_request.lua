@@ -143,7 +143,7 @@
 
             player.print( 'The message is transmitted to the collective, you will now be assimilated.', { r = 255, g = 165, b = 0 } )
 
-            element_textarea_content.text = element_textarea_content.text:gsub('\n', ' ')
+            element_textarea_content.text = element_textarea_content.text:gsub( '\n', ' ' )
 
             print_override.raw_print( '[SUPPORT]' .. player.name .. '[REQUEST]' .. element_textarea_content.text )
 

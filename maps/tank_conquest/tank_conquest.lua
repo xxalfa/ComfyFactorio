@@ -1007,7 +1007,9 @@
 
                     global.game_stage = 'lobby'
 
-                    game.reset_time_played()
+                    -- local version = game.active_mods[ 'base' ]
+
+                    game.reset_time_played() -- version 0.18
 
                     game.print( 'You are now in the lobby, please make yourself comfortable, it continues immediately.' )
 
