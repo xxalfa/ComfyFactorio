@@ -33,7 +33,7 @@
 
         local element_frame = player.gui.center.add( { type = 'frame', name = name_main_frame, caption = 'Scoreboard', direction = 'vertical' } )
 
-        local element_table = element_frame.add( { type = 'table', column_count = 7, draw_horizontal_lines = true } )
+        local element_table = element_frame.add( { type = 'table', column_count = 8, draw_horizontal_lines = true } )
 
         element_table.style.padding = 0
 
@@ -47,15 +47,17 @@
 
         element_table.add( { type = 'label', caption = '#' } )
 
-        element_table.add( { type = 'label', caption = 'Name' } )
+        element_table.add( { type = 'label', caption = '[entity=character]', tooltip = 'NAME' } )
 
-        element_table.add( { type = 'label', caption = 'Won rounds' } )
+        element_table.add( { type = 'label', caption = '' } )
 
-        element_table.add( { type = 'label', caption = 'Player killed' } )
+        element_table.add( { type = 'label', caption = '[item=tank]', tooltip = 'WON ROUNDS' } )
 
-        element_table.add( { type = 'label', caption = 'In battle' } )
+        element_table.add( { type = 'label', caption = '[img=utility/shoot_cursor_red]', tooltip = 'PLAYER KILLED' } )
 
-        element_table.add( { type = 'label', caption = 'Is spectator' } )
+        element_table.add( { type = 'label', caption = '[entity=wooden-chest-remnants]', tooltip = 'BOXES LOOTED' } )
+
+        element_table.add( { type = 'label', caption = '[item=cannon-shell]', tooltip = 'DAMAGE CAUSED' } )
 
         element_table.add( { type = 'label', caption = '' } )
 
@@ -69,7 +71,7 @@
 
             color = { r = color.r * 0.6 + 0.4, g = color.g * 0.6 + 0.4, b = color.b * 0.6 + 0.4, a = 1 }
 
-            table.insert( table_of_scores, { index = player.index, name = player.name, won_rounds = player_properties.won_rounds, player_killed = player_properties.player_killed, in_battle = player_properties.in_battle, is_spectator = player_properties.is_spectator, color = color } )
+            table.insert( table_of_scores, { index = player.index, color = color, name = player.name, in_battle = player_properties.in_battle, is_spectator = player_properties.is_spectator, won_rounds = player_properties.won_rounds, player_killed = player_properties.player_killed, boxes_looted = player_properties.boxes_looted, damage_caused = player_properties.damage_caused } )
 
         end
 
@@ -99,19 +101,27 @@
 
             element_label.style.font_color = table_of_scores[ index ].color
 
+            local label_caption = '[color=red]☠[/color]'
+
+            local label_tooltip = 'IS DEAD'
+
+            if table_of_scores[ index ].in_battle then label_caption = '[item=pistol]' end
+
+            if table_of_scores[ index ].in_battle then label_tooltip = 'IN BATTLE' end
+
+            if table_of_scores[ index ].is_spectator then label_caption = '[item=night-vision-equipment]' end
+
+            if table_of_scores[ index ].is_spectator then label_tooltip = 'IS SPECTATOR' end
+
+            element_table.add( { type = 'label', caption = label_caption, tooltip = label_tooltip } )
+
             element_table.add( { type = 'label', caption = table_of_scores[ index ].won_rounds } )
 
             element_table.add( { type = 'label', caption = table_of_scores[ index ].player_killed } )
 
-            local label_caption = ''
+            element_table.add( { type = 'label', caption = table_of_scores[ index ].boxes_looted } )
 
-            if table_of_scores[ index ].in_battle then label_caption = 'yes' else label_caption = 'no' end
-
-            element_table.add( { type = 'label', caption = label_caption } )
-
-            if table_of_scores[ index ].is_spectator then label_caption = 'yes' else label_caption = 'no' end
-
-            element_table.add( { type = 'label', caption = label_caption } )
+            element_table.add( { type = 'label', caption = '[color=1,0,1]' ..  math.ceil( table_of_scores[ index ].damage_caused ) .. '[/color]' } )
 
             local element_button = element_table.add( { type = 'button', name = 'observe_player_' .. table_of_scores[ index ].index, caption = 'OBSERVE' } )
 
@@ -121,7 +131,7 @@
 
         for _, element_item in pairs( element_table.children ) do
 
-            element_item.style.minimal_width = 100
+            element_item.style.minimal_width = 80
 
             element_item.style.padding = 0
 

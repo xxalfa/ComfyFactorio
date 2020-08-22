@@ -845,7 +845,7 @@
 
         player.game_view_settings = { show_controller_gui = true, show_minimap = false, show_research_info = false, show_entity_info = true, show_alert_gui = true, update_entity_selection = true, show_rail_block_visualisation = false, show_side_menu = false, show_map_view_options = false, show_quickbar = true, show_shortcut_bar = false }
 
-        if not global.table_of_players[ player.index ] then global.table_of_players[ player.index ] = { won_rounds = 0, player_killed = 0, in_battle = false, is_spectator = false, tank = nil, spawn = nil } end
+        if not global.table_of_players[ player.index ] then global.table_of_players[ player.index ] = { in_battle = false, is_spectator = false, won_rounds = 0, player_killed = 0, tank = nil, spawn = nil } end
 
         if not game.forces[ 'force_player_' .. player.index ] then
 
