@@ -42,6 +42,8 @@ Global.register(
         callbacks = tbl.callbacks
         task_queue = tbl.task_queue
         primitives = tbl.primitives
+
+        PriorityQueue.load(callbacks, comparator)
     end
 )
 
@@ -147,6 +149,16 @@ function Task.set_queue_speed(value)
     end
 
     primitives.task_queue_speed = value
+end
+
+function Task.start_queue()
+    if task_queue._tail == 0 then
+        task_queue._tail = 1
+    end
+end
+
+function Task.get_task_queue()
+    return task_queue
 end
 
 Event.add(defines.events.on_tick, on_tick)

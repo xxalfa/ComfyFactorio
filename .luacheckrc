@@ -48,7 +48,7 @@ local STD_BASE_CONTROL = 'lua52c+factorio+factorio_control+factorio_defines+fact
 --[Assume Factorio Control stage as default]--
 -------------------------------------------------------------------------------
 std = STD_CONTROL
-globals = {'print', '_DEBUG', '_CHEATS', '_DUMP_ENV', 'ServerCommands', 'Debug', '_LIFECYCLE', '_STAGE'} -- RedMew-specific globals
+globals = {'print', '_DEBUG', '_CHEATS', '_DUMP_ENV', 'ServerCommands', 'Debug', '_LIFECYCLE', '_STAGE'}
 max_line_length = LINE_LENGTH
 
 not_globals = NOT_GLOBALS
@@ -220,6 +220,12 @@ stds.factorio_control = {
             fields = {'print'}
         },
 
+        commands = {
+            fields = {
+                'add_command'
+            }
+        },
+
         rendering = {
             other_fields = false,
             read_only = true,
@@ -342,6 +348,7 @@ stds.factorio_control = {
                 "json_to_table",
                 "kick_player",
                 "merge_forces",
+                "pollution_statistics",
                 "mute_player",
                 "play_sound",
                 "print",
@@ -355,9 +362,11 @@ stds.factorio_control = {
                 "save_atlas",
                 "server_save",
                 "set_game_state",
+                "reset_time_played",
                 "show_message_dialog",
                 "table_to_json",
                 "take_screenshot",
+
                 "take_technology_screenshot",
                 "unban_player",
                 "unmute_player",
@@ -1258,6 +1267,8 @@ stds.factorio_defines = {
                         'quick_bar_pick_slot',
                         'quick_bar_set_selected_page',
                         'quick_bar_set_slot',
+                        'flush_opened_entity_fluid',
+                        'flush_opened_entity_specific_fluid',
                         'remove_cables',
                         'remove_train_station',
                         'reset_assembling_machine',

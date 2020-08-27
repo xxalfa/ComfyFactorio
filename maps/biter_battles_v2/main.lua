@@ -1,17 +1,11 @@
 -- Biter Battles v2 -- by MewMew
 
-require "on_tick_schedule"
-require "modules.biter_reanimator"
 local Ai = require "maps.biter_battles_v2.ai"
-local Biters_landfill = require "maps.biter_battles_v2.biters_landfill"
-local Chat = require "maps.biter_battles_v2.chat"
-local Combat_balance = require "maps.biter_battles_v2.combat_balance"
+local Functions = require "maps.biter_battles_v2.functions"
 local Game_over = require "maps.biter_battles_v2.game_over"
 local Gui = require "maps.biter_battles_v2.gui"
 local Init = require "maps.biter_battles_v2.init"
-local Map_info = require "maps.biter_battles_v2.map_info"
 local Mirror_terrain = require "maps.biter_battles_v2.mirror_terrain"
-local No_turret_creep = require "maps.biter_battles_v2.no_turret_creep"
 local Team_manager = require "maps.biter_battles_v2.team_manager"
 local Terrain = require "maps.biter_battles_v2.terrain"
 
@@ -24,20 +18,10 @@ require "modules.custom_death_messages"
 local function on_player_joined_game(event)
 	local surface = game.surfaces["biter_battles"]
 	local player = game.players[event.player_index]
-
 	if player.online_time == 0 then
-		player.spectator = true
-		player.force = game.forces.spectator
-		if surface.is_chunk_generated({0,0}) then
-			player.teleport(surface.find_non_colliding_position("character", {0,0}, 3, 0.5), surface)
-		else
-			player.teleport({0,0}, surface)
-		end
-		player.character.destructible = false
-		game.permissions.get_group("spectator").add_player(player)
+		Functions.init_player(player)
 	end
-
-	Map_info.player_joined_game(player)
+	Functions.create_map_intro_button(player)
 	Team_manager.draw_top_toggle_button(player)
 end
 
@@ -47,48 +31,35 @@ local function on_gui_click(event)
 	if not element then return end
 	if not element.valid then return end
 
-	if Map_info.gui_click(player, element) then return end
+	if Functions.map_intro_click(player, element) then return end
 	Team_manager.gui_click(event)
 end
 
 local function on_research_finished(event)
-	Combat_balance.research_finished(event)
+	Functions.combat_balance(event)
 end
 
 local function on_console_chat(event)
-	Chat.share(event)
+	Functions.share_chat(event)
 end
 
 local function on_built_entity(event)
-	No_turret_creep.deny_building(event)
+	Functions.no_turret_creep(event)
+	Functions.add_target_entity(event.created_entity)
 end
 
 local function on_robot_built_entity(event)
-	No_turret_creep.deny_building(event)
+	Functions.no_turret_creep(event)
 	Terrain.deny_construction_bots(event)
+	Functions.add_target_entity(event.created_entity)
 end
 
 local function on_entity_died(event)
 	local entity = event.entity
 	if not entity.valid then return end
 	if Ai.subtract_threat(entity) then Gui.refresh_threat() end
-	if Biters_landfill.entity_died(entity) then return end
+	if Functions.biters_landfill(entity) then return end
 	Game_over.silo_death(event)
-end
-
---Prevent Players from damaging Rocket Silos
-local function on_entity_damaged(event)
-	local entity = event.entity
-	if not entity.valid then return end
-	if entity.force.index > 5 then return end
-
-	local cause = event.cause
-	if cause then
-		if cause.type == "unit" then return end
-	end
-
-	if entity.name ~= "rocket-silo" then return end
-	entity.health = entity.health + event.final_damage_amount
 end
 
 local tick_minute_functions = {
@@ -105,7 +76,6 @@ local tick_minute_functions = {
 	[300 * 3 + 30 * 8] = Ai.post_main_attack,
 	[300 * 4] = Ai.send_near_biters_to_silo,
 	[300 * 5] = Ai.wake_up_sleepy_groups,
-	[300 * 7] = Game_over.restart_idle_map,
 }
 
 local function on_tick()
@@ -152,26 +122,21 @@ end
 
 local function on_chunk_generated(event)
 	Terrain.generate(event)
-	Mirror_terrain.add_chunks(event)
+	Mirror_terrain.add_chunk(event)
 end
 
 local function on_init()
-	Init.settings()
-	Init.surface()
-	Init.forces()
-	Team_manager.init()
-	
-	local surface = game.surfaces["biter_battles"]
-	surface.request_to_generate_chunks({x = 0, y = -256}, 8)
-	surface.force_generate_chunk_requests()
-	Terrain.generate_north_silo(surface)
+	Init.tables()
+	Init.initial_setup()
+	Init.forces()	
+	Init.source_surface()
+	Init.load_spawn()
 end
 
 local Event = require 'utils.event'
 Event.add(defines.events.on_built_entity, on_built_entity)
 Event.add(defines.events.on_chunk_generated, on_chunk_generated)
 Event.add(defines.events.on_console_chat, on_console_chat)
-Event.add(defines.events.on_entity_damaged, on_entity_damaged)
 Event.add(defines.events.on_entity_died, on_entity_died)
 Event.add(defines.events.on_gui_click, on_gui_click)
 Event.add(defines.events.on_marked_for_deconstruction, on_marked_for_deconstruction)
@@ -183,7 +148,9 @@ Event.add(defines.events.on_robot_built_tile, on_robot_built_tile)
 Event.add(defines.events.on_tick, on_tick)
 Event.on_init(on_init)
 
-Event.add_event_filter(defines.events.on_entity_damaged, { filter = "name", name = "rocket-silo" })
+Event.add_event_filter(defines.events.on_entity_damaged, {filter = "type", type = "unit"})
+Event.add_event_filter(defines.events.on_entity_damaged, {filter = "type", type = "unit-spawner"})
+Event.add_event_filter(defines.events.on_entity_damaged, {filter = "type", type = "turret"})
 
 require "maps.biter_battles_v2.spec_spy"
 require "maps.biter_battles_v2.difficulty_vote"

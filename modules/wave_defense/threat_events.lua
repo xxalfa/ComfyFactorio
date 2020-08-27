@@ -31,8 +31,8 @@ local function place_nest_near_unit_group(wave_defense_table)
 	if math_random(1, 3) == 1 then name = "spitter-spawner" end
 	local position = unit.surface.find_non_colliding_position(name, unit.position, 12, 1)
 	if not position then return end
-	local r = wave_defense_table.nest_building_density	
-	if unit.surface.count_entities_filtered({type = "unit-spawner", area = {{position.x - r, position.y - r},{position.x + r, position.y + r}}}) > 0 then return end
+	local r = wave_defense_table.nest_building_density
+	if unit.surface.count_entities_filtered({type = "unit-spawner", force = unit.force, area = {{position.x - r, position.y - r},{position.x + r, position.y + r}}}) > 0 then return end
 	unit.surface.create_entity({name = name, position = position, force = unit.force})
 	unit.surface.create_entity({name = "blood-explosion-huge", position = position})
 	unit.surface.create_entity({name = "blood-explosion-huge", position = unit.position})
@@ -68,7 +68,7 @@ function Public.build_worm()
 	local worm = BiterRolls.wave_defense_roll_worm_name()
 	if not position then return end
 	local r = wave_defense_table.worm_building_density
-	if unit.surface.count_entities_filtered({type = "turret", area = {{position.x - r, position.y - r},{position.x + r, position.y + r}}}) > 0 then return end
+	if unit.surface.count_entities_filtered({type = "turret", force = unit.force, area = {{position.x - r, position.y - r},{position.x + r, position.y + r}}}) > 0 then return end
 	unit.surface.create_entity({name = worm, position = position, force = unit.force})
 	unit.surface.create_entity({name = "blood-explosion-huge", position = position})
 	unit.surface.create_entity({name = "blood-explosion-huge", position = unit.position})
@@ -161,9 +161,10 @@ end
 local function on_entity_died(event)
 	local wave_defense_table = WD.get_table()
 	local entity = event.entity
-	if not entity.valid then	return end
+	if not entity.valid then return end
 	
 	if entity.type == "unit" then
+		if not threat_values[entity.name] then return end
 		wave_defense_table.threat = math.round(wave_defense_table.threat - threat_values[entity.name] * global.biter_health_boost, 2)
 		remove_unit(entity)
 		--acid_nova(entity)
@@ -171,9 +172,8 @@ local function on_entity_died(event)
 		if entity.force.index == 2 then	
 			if entity.health then
 				if threat_values[entity.name] then
-					wave_defense_table.threat = wave_defense_table.threat - threat_values[entity.name]
-				end
-				
+					wave_defense_table.threat = math.round(wave_defense_table.threat - threat_values[entity.name] * global.biter_health_boost, 2)
+				end				
 				spawn_unit_spawner_inhabitants(wave_defense_table, entity)
 			end
 		end

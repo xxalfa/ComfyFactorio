@@ -699,7 +699,48 @@ function Public.query_online_players()
     raw_print(message)
 end
 
---- The [JOIN] nad [LEAVE] messages Factorio sends to stdout aren't sent in all cases of
+local function command_handler(callback, ...)
+    if type(callback) == 'function' then
+        local success, err = pcall(callback, ...)
+        return success, err
+    else
+        local success, err = pcall(loadstring(callback), ...)
+        return success, err
+    end
+end
+
+--- The command 'cc' is only used by the server so it can communicate through the webpanel api to the instances that it starts.
+-- Doing this, enables achivements and the webpanel can communicate without any interruptions.
+commands.add_command(
+    'cc',
+    'Evaluate command',
+    function(cmd)
+        local player = game.player
+        if player then
+            return
+        end
+
+        local callback = cmd.parameter
+        if not callback then
+            return
+        end
+        if not string.find(callback, '%s') and not string.find(callback, 'return') then
+            callback = 'return ' .. callback
+        end
+        local success, err = command_handler(callback)
+        if not success and type(err) == 'string' then
+            local _end = string.find(err, 'stack traceback')
+            if _end then
+                err = string.sub(err, 0, _end - 2)
+            end
+        end
+        if err or err == false then
+            raw_print(err)
+        end
+    end
+)
+
+--- The [JOIN] and [LEAVE] messages Factorio sends to stdout aren't sent in all cases of
 --  players joining or leaving. So we send our own [PLAYER-JOIN] and [PLAYER-LEAVE] tags.
 Event.add(
     defines.events.on_player_joined_game,
