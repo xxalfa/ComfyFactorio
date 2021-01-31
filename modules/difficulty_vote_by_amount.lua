@@ -178,6 +178,9 @@ end
 
 local function set_difficulty()
     local index = highest_count(this.difficulties)
+    if not index then
+        return
+    end
 
     if this.difficulty_vote_index ~= index then
         local message = table.concat({'>> Map difficulty has changed to ', this.difficulties[index].name, ' difficulty!'})
@@ -270,7 +273,7 @@ local function on_gui_click(event)
     end
 
     if event.element.name == 'difficulty_gui' then
-        local is_spamming = SpamProtection.is_spamming(player)
+        local is_spamming = SpamProtection.is_spamming(player, nil, 'Difficulty Vote Gui Click')
         if is_spamming then
             return
         end
@@ -292,7 +295,7 @@ local function on_gui_click(event)
         return
     end
 
-    local is_spamming = SpamProtection.is_spamming(player)
+    local is_spamming = SpamProtection.is_spamming(player, nil, 'Difficulty Gui No Func')
     if is_spamming then
         return
     end

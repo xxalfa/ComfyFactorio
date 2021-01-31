@@ -11,6 +11,14 @@ local main_button_name = Gui.uid_name()
 local main_frame_name = Gui.uid_name()
 local floor = math.floor
 
+local function validate_entity(entity)
+    if not (entity and entity.valid) then
+        return false
+    end
+
+    return true
+end
+
 local function validate_player(player)
     if not player then
         return false
@@ -153,12 +161,16 @@ local function on_gui_click(event)
         if not validate_player(player) then
             return
         end
-        local is_spamming = SpamProtection.is_spamming(player)
+        local is_spamming = SpamProtection.is_spamming(player, nil, 'Mtn Gui Click')
         if is_spamming then
             return
         end
 
         local locomotive = WPT.get('locomotive')
+        if not validate_entity(locomotive) then
+            return
+        end
+
         if not player or not player.valid then
             return
         end

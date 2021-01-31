@@ -240,6 +240,7 @@ local function set_train_final_health(final_damage_amount)
     locomotive_health = WPT.get('locomotive_health')
 
     if locomotive_health <= 0 then
+        WPT.set('game_lost', true)
         Public.loco_died()
     end
 
@@ -1049,12 +1050,12 @@ local function show_mvps(player)
         wave_defense_text.style.font = 'default-bold'
         wave_defense_text.style.font_color = {r = 0.33, g = 0.66, b = 0.9}
 
-        local defender_label = t.add({type = 'label', caption = 'Defender >> '})
-        defender_label.style.font = 'default-listbox'
-        defender_label.style.font_color = {r = 0.22, g = 0.77, b = 0.44}
-        local defender_label_text = t.add({type = 'label', caption = mvp.killscore.name .. ' with a killing score of ' .. mvp.killscore.score .. ' kills!'})
-        defender_label_text.style.font = 'default-bold'
-        defender_label_text.style.font_color = {r = 0.33, g = 0.66, b = 0.9}
+        local fighter_label = t.add({type = 'label', caption = 'Fighter >> '})
+        fighter_label.style.font = 'default-listbox'
+        fighter_label.style.font_color = {r = 0.22, g = 0.77, b = 0.44}
+        local fighter_label_text = t.add({type = 'label', caption = mvp.killscore.name .. ' with a killing score of ' .. mvp.killscore.score .. ' kills!'})
+        fighter_label_text.style.font = 'default-bold'
+        fighter_label_text.style.font_color = {r = 0.33, g = 0.66, b = 0.9}
 
         local builder_label = t.add({type = 'label', caption = 'Builder >> '})
         builder_label.style.font = 'default-listbox'
@@ -1077,7 +1078,7 @@ local function show_mvps(player)
             table.insert(result, 'HIGHEST WAVE: \\n')
             table.insert(result, wave_defense_table.wave_number .. '\\n')
             table.insert(result, '\\n')
-            table.insert(result, 'MVP Defender: \\n')
+            table.insert(result, 'MVP Fighter: \\n')
             table.insert(result, mvp.killscore.name .. ' with a killing score of ' .. mvp.killscore.score .. ' kills!\\n')
             table.insert(result, '\\n')
             table.insert(result, 'MVP Builder: \\n')
@@ -1103,6 +1104,11 @@ function Public.unstuck_player(index)
 end
 
 function Public.loco_died()
+    local game_lost = WPT.get('game_lost')
+    if not game_lost then
+        return
+    end
+
     local active_surface_index = WPT.get('active_surface_index')
     local locomotive = WPT.get('locomotive')
     local surface = game.surfaces[active_surface_index]
@@ -1169,14 +1175,12 @@ function Public.loco_died()
     rendering.set_text(this.health_text, 'HP: ' .. this.locomotive_health .. ' / ' .. this.locomotive_max_health)
     wave_defense_table.game_lost = true
     wave_defense_table.target = nil
-    this.game_lost = true
     local msg = defeated_messages[random(1, #defeated_messages)]
 
     local pos = {
         position = this.locomotive.position
     }
     Alert.alert_all_players_location(pos, msg)
-    Server.to_discord_bold(msg, true)
     game.forces.enemy.set_friend('player', true)
     game.forces.player.set_friend('enemy', true)
 

@@ -41,7 +41,7 @@ local function on_gui_click(event)
     end
     local element = event.element
     if player.gui.screen[main_frame_name] then
-        local is_spamming = SpamProtection.is_spamming(player)
+        local is_spamming = SpamProtection.is_spamming(player, nil, 'RPG Gui Click')
         if is_spamming then
             return
         end
@@ -144,6 +144,22 @@ local get_cause_player = {
         return {game.players[cause.last_user.index]}
     end,
     ['car'] = function(cause)
+        local players = {}
+        local driver = cause.get_driver()
+        if driver then
+            if driver.player then
+                players[#players + 1] = driver.player
+            end
+        end
+        local passenger = cause.get_passenger()
+        if passenger then
+            if passenger.player then
+                players[#players + 1] = passenger.player
+            end
+        end
+        return players
+    end,
+    ['spider-vehicle'] = function(cause)
         local players = {}
         local driver = cause.get_driver()
         if driver then
@@ -754,14 +770,17 @@ local function on_player_crafted_item(event)
 
     local rpg_extra = RPG.get('rpg_extra')
     local is_blacklisted = rpg_extra.tweaked_crafting_items
+    local tweaked_crafting_items_enabled = rpg_extra.tweaked_crafting_items_enabled
 
     local item = event.item_stack
 
     local amount = 0.30 * math.random(1, 2)
 
-    if item and item.valid then
-        if is_blacklisted[item.name] then
-            amount = 0.2
+    if tweaked_crafting_items_enabled then
+        if item and item.valid then
+            if is_blacklisted[item.name] then
+                amount = 0.2
+            end
         end
     end
 
@@ -1061,7 +1080,7 @@ local function on_player_used_capsule(event)
     rpg_t[player.index].last_spawned = game.tick + object.tick
     Functions.update_mana(player)
 
-    local reward_xp = object.mana_cost * 0.009
+    local reward_xp = object.mana_cost * 0.045
     if reward_xp < 1 then
         reward_xp = 1
     end

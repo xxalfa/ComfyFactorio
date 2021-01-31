@@ -317,8 +317,8 @@ local function kick_players_from_surface(ic, car)
                     e.player.teleport(main_surface.find_non_colliding_position('character', game.forces.player.get_spawn_position(main_surface), 3, 0, 5), main_surface)
                 end
             end
+            return log_err('Car entity was not valid.')
         end
-        return log_err('Car entity was not valid.')
     end
 
     for _, e in pairs(car.surface.find_entities_filtered({area = car.area})) do
@@ -713,6 +713,10 @@ function Public.create_car_room(ic, car)
     end
 
     construct_doors(ic, car)
+    local mgs = surface.map_gen_settings
+  	mgs.width = area.right_bottom.x * 2
+  	mgs.height = area.right_bottom.y * 2
+  	surface.map_gen_settings = mgs
 
     local lx, ly, rx, ry = 4, 1, 5, 1
 
@@ -870,10 +874,12 @@ function Public.use_door_with_entity(ic, player, door)
         end
     end
 
-    player_data.fallback_surface = car.entity.surface.index
-    player_data.fallback_position = {car.entity.position.x, car.entity.position.y}
+    if validate_entity(car.entity) then
+        player_data.fallback_surface = car.entity.surface.index
+        player_data.fallback_position = {car.entity.position.x, car.entity.position.y}
+    end
 
-    if car.entity.surface.name == player.surface.name then
+    if validate_entity(car.entity) and car.entity.surface.name == player.surface.name then
         local surface = car.surface
         if validate_entity(car.entity) and car.owner == player.index then
             IC_Gui.add_toolbar(player)
