@@ -237,7 +237,6 @@ function Public.add_player_to_permission_group(player, group, forced)
         locomotive_group.set_allows_action(defines.input_action.add_permission_group, false)
         locomotive_group.set_allows_action(defines.input_action.admin_action, false)
         locomotive_group.set_allows_action(defines.input_action.drop_item, false)
-        locomotive_group.set_allows_action(defines.input_action.place_equipment, false)
     end
 
     if not game.permissions.get_group('plebs') then
@@ -258,9 +257,20 @@ function Public.add_player_to_permission_group(player, group, forced)
         not_trusted.set_allows_action(defines.input_action.add_permission_group, false)
         not_trusted.set_allows_action(defines.input_action.admin_action, false)
         not_trusted.set_allows_action(defines.input_action.drop_item, false)
-        not_trusted.set_allows_action(defines.input_action.place_equipment, false)
         not_trusted.set_allows_action(defines.input_action.disconnect_rolling_stock, false)
         not_trusted.set_allows_action(defines.input_action.connect_rolling_stock, false)
+        not_trusted.set_allows_action(defines.input_action.open_train_gui, false)
+        not_trusted.set_allows_action(defines.input_action.open_train_station_gui, false)
+        not_trusted.set_allows_action(defines.input_action.open_trains_gui, false)
+        not_trusted.set_allows_action(defines.input_action.change_train_stop_station, false)
+        not_trusted.set_allows_action(defines.input_action.change_train_wait_condition, false)
+        not_trusted.set_allows_action(defines.input_action.change_train_wait_condition_data, false)
+        not_trusted.set_allows_action(defines.input_action.drag_train_schedule, false)
+        not_trusted.set_allows_action(defines.input_action.drag_train_wait_condition, false)
+        not_trusted.set_allows_action(defines.input_action.go_to_train_station, false)
+        not_trusted.set_allows_action(defines.input_action.remove_train_station, false)
+        not_trusted.set_allows_action(defines.input_action.set_trains_limit, false)
+        not_trusted.set_allows_action(defines.input_action.set_train_stopped, false)
     end
 
     if enable_permission_group_disconnect then
@@ -347,8 +357,8 @@ local function property_boost(data)
                 }
                 rpg[player.index].xp_since_last_floaty_text = 0
                 rpg[player.index].last_floaty_text = game.tick + visuals_delay
-                if player.gui.left[rpg_main_frame] then
-                    local f = player.gui.left[rpg_main_frame]
+                if player.gui.screen[rpg_main_frame] then
+                    local f = player.gui.screen[rpg_main_frame]
                     local d = Gui.get_data(f)
                     if d.exp_gui and d.exp_gui.valid then
                         d.exp_gui.caption = floor(rpg[player.index].xp)
@@ -444,7 +454,8 @@ local function set_locomotive_health()
         if locomotive_health > locomotive_max_health then
             WPT.set('locomotive_health', locomotive_max_health)
         end
-        WPT.set().carriages = locomotive.train.carriages
+        rendering.set_text(WPT.get('health_text'), 'HP: ' .. locomotive_health .. ' / ' .. locomotive_max_health)
+        WPT.set('carriages', locomotive.train.carriages)
         local carriages = WPT.get('carriages')
         if carriages then
             for i = 1, #carriages do
@@ -452,10 +463,15 @@ local function set_locomotive_health()
                 if not (entity and entity.valid) then
                     return
                 end
+                local cargo_health = 600
+                local modded = is_game_modded()
+                if modded then
+                    cargo_health = 750
+                end
                 if entity.type == 'locomotive' then
                     entity.health = 1000 * m
                 else
-                    entity.health = 600 * m
+                    entity.health = cargo_health * m
                 end
             end
         end
@@ -1067,10 +1083,15 @@ local function gui_click(event)
                 if not (entity and entity.valid) then
                     return
                 end
+                local cargo_health = 600
+                local modded = is_game_modded()
+                if modded then
+                    cargo_health = 750
+                end
                 if entity.type == 'locomotive' then
                     entity.health = 1000 * m
                 else
-                    entity.health = 600 * m
+                    entity.health = cargo_health * m
                 end
             end
         end
@@ -1153,6 +1174,7 @@ local function gui_click(event)
                 player.name .. ' has bought the explosive bullet modifier for ' .. format_number(item.price) .. ' coins.'
             }
         )
+        RPG_Settings.enable_explosive_bullets(true)
         this.explosive_bullets = true
 
         redraw_market_items(data.item_frame, player, data.search_text)
@@ -1327,10 +1349,16 @@ local function spawn_biter()
         'big-spitter',
         'behemoth-spitter'
     }
+    if is_mod_loaded('bobenemies') then
+        biters = {'bob-leviathan-biter', 'bob-behemoth-biter', 'bob-huge-explosive-spitter'}
+    end
+
+    local size_of = #biters
+
     if not position then
         return
     end
-    this.locomotive_biter = loco_surface.create_entity({name = biters[random(1, 4)], position = position, force = 'player', create_build_effect_smoke = false})
+    this.locomotive_biter = loco_surface.create_entity({name = biters[random(1, size_of)], position = position, force = 'player', create_build_effect_smoke = false})
     this.locomotive_biter.ai_settings.allow_destroy_when_commands_fail = false
     this.locomotive_biter.ai_settings.allow_try_return_to_spawner = false
 
@@ -1650,8 +1678,8 @@ local function place_market()
 end
 
 local function on_research_finished()
-    local game_lost = WPT.get('game_lost')
-    if game_lost then
+    local market_announce = WPT.get('market_announce')
+    if market_announce > game.tick then
         return
     end
 
@@ -1689,7 +1717,7 @@ local function shoo(event)
     message = string.lower(message)
     for word in string.gmatch(message, '%g+') do
         if word == 'shoo' then
-            if not locomotive_biter then
+            if not locomotive_biter or not locomotive_biter.valid then
                 spawn_biter()
                 return
             end
@@ -1749,15 +1777,39 @@ local function on_player_driving_changed_state(event)
     if not player or not player.valid then
         return
     end
+    local entity = event.entity
+    if not entity or not entity.valid then
+        return
+    end
+
     local trusted = Session.get_trusted_table()
+    if #trusted == 0 then
+        return
+    end
+
     local locomotive = WPT.get('locomotive')
     if not locomotive or not locomotive.valid then
         return
     end
-    if not trusted[player.name] then
-        if player.character and player.character.valid and player.character.driving then
-            player.character.driving = false
+
+    if entity.unit_number == locomotive.unit_number then
+        if not trusted[player.name] then
+            if player.character and player.character.valid and player.character.driving then
+                player.character.driving = false
+            end
         end
+    end
+end
+
+local function on_player_left_game(event)
+    local player = game.players[event.player_index]
+    if not player or not player.valid then
+        return
+    end
+
+    local trusted = Session.get_trusted_table()
+    if trusted[player.name] then
+        trusted[player.name] = nil
     end
 end
 
@@ -2120,34 +2172,67 @@ function Public.get_items()
     }
 
     if game.forces.player.technologies['logistics'].researched then
-        main_market_items['loader'] = {
-            stack = 1,
-            value = 'coin',
-            price = 128,
-            tooltip = ({'entity-name.loader'}),
-            upgrade = false,
-            static = true
-        }
+        if is_mod_loaded('Krastorio2') then
+            main_market_items['kr-loader'] = {
+                stack = 1,
+                value = 'coin',
+                price = 128,
+                tooltip = ({'entity-name.kr-loader'}),
+                upgrade = false,
+                static = true
+            }
+        else
+            main_market_items['loader'] = {
+                stack = 1,
+                value = 'coin',
+                price = 128,
+                tooltip = ({'entity-name.loader'}),
+                upgrade = false,
+                static = true
+            }
+        end
     end
     if game.forces.player.technologies['logistics-2'].researched then
-        main_market_items['fast-loader'] = {
-            stack = 1,
-            value = 'coin',
-            price = 256,
-            tooltip = ({'entity-name.fast-loader'}),
-            upgrade = false,
-            static = true
-        }
+        if is_mod_loaded('Krastorio2') then
+            main_market_items['kr-fast-loader'] = {
+                stack = 1,
+                value = 'coin',
+                price = 256,
+                tooltip = ({'entity-name.kr-fast-loader'}),
+                upgrade = false,
+                static = true
+            }
+        else
+            main_market_items['fast-loader'] = {
+                stack = 1,
+                value = 'coin',
+                price = 256,
+                tooltip = ({'entity-name.fast-loader'}),
+                upgrade = false,
+                static = true
+            }
+        end
     end
     if game.forces.player.technologies['logistics-3'].researched then
-        main_market_items['express-loader'] = {
-            stack = 1,
-            value = 'coin',
-            price = 512,
-            tooltip = ({'entity-name.express-loader'}),
-            upgrade = false,
-            static = true
-        }
+        if is_mod_loaded('Krastorio2') then
+            main_market_items['kr-express-loader'] = {
+                stack = 1,
+                value = 'coin',
+                price = 512,
+                tooltip = ({'entity-name.kr-express-loader'}),
+                upgrade = false,
+                static = true
+            }
+        else
+            main_market_items['express-loader'] = {
+                stack = 1,
+                value = 'coin',
+                price = 512,
+                tooltip = ({'entity-name.express-loader'}),
+                upgrade = false,
+                static = true
+            }
+        end
     end
     main_market_items['small-lamp'] = {
         stack = 1,
@@ -2205,6 +2290,34 @@ function Public.get_items()
         upgrade = false,
         static = false
     }
+    if is_mod_loaded('Factorio-Tiberium') then
+        main_market_items['tiberium-ore'] = {
+            stack = 25,
+            value = 'coin',
+            price = 15,
+            tooltip = ({'item-name.tiberium-ore'}),
+            upgrade = false,
+            static = false
+        }
+    end
+    if is_mod_loaded('Krastorio2') then
+        main_market_items['first-aid-kit'] = {
+            stack = 1,
+            value = 'coin',
+            price = 20,
+            tooltip = ({'item-name.first-aid-kit'}),
+            upgrade = false,
+            static = false
+        }
+        main_market_items['kr-creep-collector'] = {
+            price = 50,
+            stack = 1,
+            tooltip = ({'item-name.kr-creep-collector'}),
+            upgrade = false,
+            static = true,
+            value = 'coin'
+        }
+    end
     main_market_items['land-mine'] = {
         stack = 1,
         value = 'coin',
@@ -2253,6 +2366,16 @@ function Public.get_items()
         upgrade = false,
         static = true
     }
+    if is_mod_loaded('Krastorio2') then
+        main_market_items['kr-advanced-tank'] = {
+            stack = 1,
+            value = 'coin',
+            price = 20000,
+            tooltip = ({'main_market.tank'}),
+            upgrade = false,
+            static = true
+        }
+    end
     local wave_number = WD.get_wave()
 
     if wave_number >= 650 then
@@ -2405,5 +2528,6 @@ Event.add(defines.events.on_robot_mined_entity, on_player_and_robot_mined_entity
 Event.add(defines.events.on_console_chat, on_console_chat)
 Event.add(defines.events.on_player_changed_surface, on_player_changed_surface)
 Event.add(defines.events.on_player_driving_changed_state, on_player_driving_changed_state)
+Event.add(defines.events.on_player_left_game, on_player_left_game)
 
 return Public

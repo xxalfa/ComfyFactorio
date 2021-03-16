@@ -31,8 +31,13 @@ local Task = require 'utils.task'
 local Token = require 'utils.token'
 local Alert = require 'utils.alert'
 local AntiGrief = require 'antigrief'
-local Commands = require 'commands.misc'
+local BottomFrame = require 'comfy_panel.bottom_frame'
+local Misc = require 'commands.misc'
 local Modifiers = require 'player_modifiers'
+local BiterHealthBooster = require 'modules.biter_health_booster_v2'
+local Reset = require 'functions.soft_reset'
+local JailData = require 'utils.datastore.jail_data'
+
 require 'maps.mountain_fortress_v3.rocks_yield_ore_veins'
 
 require 'maps.mountain_fortress_v3.generate'
@@ -48,6 +53,7 @@ require 'modules.wave_defense.main'
 require 'modules.charging_station'
 
 local Public = {}
+local raise_event = script.raise_event
 local floor = math.floor
 local remove = table.remove
 
@@ -100,15 +106,18 @@ function Public.reset_map()
     local this = WPT.get()
     local wave_defense_table = WD.get_table()
 
+    Reset.enable_mapkeeper(true)
+
     this.active_surface_index = CS.create_surface()
+    -- this.soft_reset_counter = CS.get_reset_counter()
 
     Autostash.insert_into_furnace(true)
     Autostash.insert_into_wagon(true)
     Autostash.bottom_button(true)
     BuriedEnemies.reset()
-    Commands.reset()
-    Commands.activate_custom_buttons(true)
-    Commands.bottom_right(true)
+    BottomFrame.reset()
+    BottomFrame.activate_custom_buttons(true)
+    BottomFrame.bottom_right(true)
 
     Poll.reset()
     ICW.reset()
@@ -130,6 +139,8 @@ function Public.reset_map()
     RPG_Settings.enable_one_punch_globally(false)
     RPG_Settings.enable_auto_allocate(true)
     RPG_Settings.disable_cooldowns_on_spells()
+    RPG_Settings.enable_explosive_bullets_globally(true)
+    RPG_Settings.enable_explosive_bullets(false)
 
     Group.reset_groups()
     Group.alphanumeric_only(false)
@@ -143,10 +154,18 @@ function Public.reset_map()
         surface.daytime = 0.45
     end
 
+    JailData.set_valid_surface(tostring(surface.name))
+
     Explosives.set_surface_whitelist({[surface.name] = true})
 
     game.forces.player.set_spawn_position({-27, 25}, surface)
     game.forces.player.manual_mining_speed_modifier = 0
+
+    BiterHealthBooster.set_active_surface(tostring(surface.name))
+    BiterHealthBooster.acid_nova(true)
+    BiterHealthBooster.check_on_entity_died(true)
+    BiterHealthBooster.boss_spawns_projectiles(true)
+    BiterHealthBooster.enable_boss_loot(false)
 
     Balance.init_enemy_weapon_damage()
 
@@ -166,12 +185,13 @@ function Public.reset_map()
     for i = 1, #players do
         local player = players[i]
         Score.init_player_table(player, true)
-        Commands.insert_all_items(player)
+        Misc.insert_all_items(player)
         Modifiers.reset_player_modifiers(player)
         if player.gui.left['mvps'] then
             player.gui.left['mvps'].destroy()
         end
         ICMinimap.kill_minimap(player)
+        raise_event(Gui_mf.events.reset_map, {player_index = player.index})
     end
 
     Difficulty.reset_difficulty_poll({difficulty_poll_closing_timeout = game.tick + 36000})
@@ -181,7 +201,8 @@ function Public.reset_map()
     Collapse.set_kill_specific_entities(collapse_kill)
     Collapse.set_speed(8)
     Collapse.set_amount(1)
-    Collapse.set_max_line_size(WPT.level_width)
+    -- Collapse.set_max_line_size(WPT.level_width)
+    Collapse.set_max_line_size(540)
     Collapse.set_surface(surface)
     Collapse.set_position({0, 130})
     Collapse.set_direction('north')
@@ -199,14 +220,16 @@ function Public.reset_map()
     wave_defense_table.target = this.locomotive
     wave_defense_table.nest_building_density = 32
     wave_defense_table.game_lost = false
-    wave_defense_table.spawn_position = {x = 0, y = 100}
+    wave_defense_table.spawn_position = {x = 0, y = 84}
     WD.alert_boss_wave(true)
     WD.clear_corpses(false)
     WD.remove_entities(true)
     WD.enable_threat_log(true)
     WD.check_collapse_position(true)
     WD.set_disable_threat_below_zero(true)
-    WD.increase_damage_per_wave(false)
+    WD.increase_boss_health_per_wave(true)
+    WD.increase_damage_per_wave(true)
+    WD.increase_health_per_wave(true)
 
     Functions.set_difficulty()
     Functions.disable_creative()
@@ -223,7 +246,13 @@ function Public.reset_map()
 
     HS.get_scores()
 
-    this.chunk_load_tick = game.tick + 1200
+    if is_game_modded() then
+        game.difficulty_settings.technology_price_multiplier = 0.5
+    end
+
+    this.chunk_load_tick = game.tick + 200
+    this.force_chunk = true
+    this.market_announce = game.tick + 1200
     this.game_lost = false
 end
 
@@ -274,15 +303,18 @@ local has_the_game_ended = function()
                 game.print(({'main.reset_in', cause_msg, this.game_reset_tick / 60}), {r = 0.22, g = 0.88, b = 0.22})
             end
 
+            local diff_name = Difficulty.get('name')
+
             if this.soft_reset and this.game_reset_tick == 0 then
                 this.game_reset_tick = nil
-                HS.set_scores()
+                HS.set_scores(diff_name)
                 Public.reset_map()
                 return
             end
+
             if this.restart and this.game_reset_tick == 0 then
                 if not this.announced_message then
-                    HS.set_scores()
+                    HS.set_scores(diff_name)
                     game.print(({'entity.notify_restart'}), {r = 0.22, g = 0.88, b = 0.22})
                     local message = 'Soft-reset is disabled! Server will restart from scenario to load new changes.'
                     Server.to_discord_bold(table.concat {'*** ', message, ' ***'})
@@ -293,7 +325,7 @@ local has_the_game_ended = function()
             end
             if this.shutdown and this.game_reset_tick == 0 then
                 if not this.announced_message then
-                    HS.set_scores()
+                    HS.set_scores(diff_name)
                     game.print(({'entity.notify_shutdown'}), {r = 0.22, g = 0.88, b = 0.22})
                     local message = 'Soft-reset is disabled! Server will shutdown. Most likely because of updates.'
                     Server.to_discord_bold(table.concat {'*** ', message, ' ***'})
@@ -308,9 +340,11 @@ end
 
 local chunk_load = function()
     local chunk_load_tick = WPT.get('chunk_load_tick')
+    local tick = game.tick
     if chunk_load_tick then
-        if chunk_load_tick < game.tick then
-            WPT.get().chunk_load_tick = nil
+        if chunk_load_tick < tick then
+            WPT.set('force_chunk', false)
+            WPT.remove('chunk_load_tick')
             Task.set_queue_speed(3)
         end
     end
@@ -426,11 +460,23 @@ local on_init = function()
     local this = WPT.get()
     Public.reset_map()
 
-    local tooltip = {
-        [1] = ({'main.diff_tooltip', '0', '0.5', '0.2', '0.4', '1', '12', '50', '10000', '100%', '15', '14'}),
-        [2] = ({'main.diff_tooltip', '0', '0.25', '0.1', '0.1', '1', '10', '50', '7000', '75%', '10', '16'}),
-        [3] = ({'main.diff_tooltip', '0', '0', '0', '0', '1', '3', '10', '5000', '50%', '10', '18'})
-    }
+    game.map_settings.path_finder.general_entity_collision_penalty = 1 -- Recommended value
+    game.map_settings.path_finder.general_entity_subsequent_collision_penalty = 1 -- Recommended value
+
+    local tooltip
+    if is_game_modded() then
+        tooltip = {
+            [1] = ({'main.diff_tooltip', '0', '0.5', '0.15', '0.15', '1', '12', '50', '20000', '100%', '15', '10'}),
+            [2] = ({'main.diff_tooltip', '0', '0.25', '0.1', '0.1', '2', '10', '50', '12000', '75%', '8', '8'}),
+            [3] = ({'main.diff_tooltip', '0', '0', '0', '0', '4', '3', '10', '8000', '50%', '5', '6'})
+        }
+    else
+        tooltip = {
+            [1] = ({'main.diff_tooltip', '0', '0.5', '0.15', '0.15', '1', '12', '50', '10000', '100%', '15', '10'}),
+            [2] = ({'main.diff_tooltip', '0', '0.25', '0.1', '0.1', '2', '10', '50', '7000', '75%', '8', '8'}),
+            [3] = ({'main.diff_tooltip', '0', '0', '0', '0', '4', '3', '10', '5000', '50%', '5', '6'})
+        }
+    end
 
     Difficulty.set_tooltip(tooltip)
 

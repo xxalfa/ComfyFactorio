@@ -7,6 +7,7 @@ local Score = require 'comfy_panel.score'
 local WPT = require 'maps.mountain_fortress_v3.table'
 local WD = require 'modules.wave_defense.table'
 local Core = require 'utils.core'
+local SpamProtection = require 'utils.spam_protection'
 
 local score_dataset = 'highscores'
 local score_key = 'mountain_fortress_v3_scores'
@@ -287,7 +288,7 @@ local function get_total_biter_killcount(force)
     return count
 end
 
-local function write_additional_stats(key)
+local function write_additional_stats(key, difficulty)
     local player = game.forces.player
     local new_breached_zone = WPT.get('breached_wall')
     local new_wave_number = WD.get('wave_number')
@@ -329,6 +330,10 @@ local function write_additional_stats(key)
             t.total_time = old_total_time
         end
 
+        if difficulty then
+            t.difficulty = difficulty
+        end
+
         local new_stats = get_mvps()
         if new_stats then
             t.players = new_stats
@@ -361,16 +366,22 @@ function Public.get_scores()
     if not secs then
         return
     else
+        if is_game_modded() then
+            score_key = 'mountain_fortress_v3_scores_modded'
+        end
         try_get_data(score_dataset, score_key, get_scores)
     end
 end
 
-function Public.set_scores()
+function Public.set_scores(difficulty)
     local secs = Server.get_current_time()
     if not secs then
         return
     else
-        write_additional_stats(score_key)
+        if is_game_modded() then
+            score_key = 'mountain_fortress_v3_scores_modded'
+        end
+        write_additional_stats(score_key, difficulty)
     end
 end
 
@@ -397,6 +408,7 @@ local function get_score_list()
         }
         return score_list
     end
+
     for p, _ in pairs(score_force.players) do
         local score = score_force.players[p]
         insert(
@@ -614,6 +626,11 @@ local function on_gui_click(event)
         return
     end
     if frame.name ~= 'Highscore' then
+        return
+    end
+
+    local is_spamming = SpamProtection.is_spamming(player, nil, 'HighScore Gui Click')
+    if is_spamming then
         return
     end
 

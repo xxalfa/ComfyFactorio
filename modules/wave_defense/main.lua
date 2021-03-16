@@ -1,5 +1,5 @@
 local Event = require 'utils.event'
-local BiterHealthBooster = require 'modules.biter_health_booster'
+local BiterHealthBooster = require 'modules.biter_health_booster_v2'
 local BiterRolls = require 'modules.wave_defense.biter_rolls'
 local SideTargets = require 'modules.wave_defense.side_targets'
 local ThreatEvent = require 'modules.wave_defense.threat_events'
@@ -177,21 +177,28 @@ local function get_spawn_pos()
 
     ::retry::
 
-    local position = WD.get('spawn_position')
+    local initial_position = WD.get('spawn_position')
 
-    position = find_initial_spot(surface, position)
-    position = surface.find_non_colliding_position('behemoth-biter', position, 32, 1)
-    -- local x = position.x
-    -- local y = position.y
-    -- game.print('[gps=' .. x .. ',' .. y .. ',' .. surface.name .. ']')
-    if not position then
+    local located_position = find_initial_spot(surface, initial_position)
+    local valid_position = surface.find_non_colliding_position('behemoth-biter', located_position, 32, 1)
+    local debug = WD.get('debug')
+    if debug then
+        if valid_position then
+            local x = valid_position.x
+            local y = valid_position.y
+            game.print('[gps=' .. x .. ',' .. y .. ',' .. surface.name .. ']')
+        end
+    end
+
+    if not valid_position then
         local remove_entities = WD.get('remove_entities')
         if remove_entities then
             c = c + 1
-            position = WD.get('spawn_position')
-            remove_trees({surface = surface, position = position, valid = true})
-            remove_rocks({surface = surface, position = position, valid = true})
-            fill_tiles({surface = surface, position = position, valid = true})
+            valid_position = WD.get('spawn_position')
+            debug_print(serpent.block('valid_position - x:' .. valid_position.x .. ' y:' .. valid_position.y))
+            remove_trees({surface = surface, position = valid_position, valid = true})
+            remove_rocks({surface = surface, position = valid_position, valid = true})
+            fill_tiles({surface = surface, position = valid_position, valid = true})
             WD.set('spot', 'nil')
             if c == 5 then
                 return debug_print('get_spawn_pos - we could not find a spawning pos?')
@@ -202,7 +209,9 @@ local function get_spawn_pos()
         end
     end
 
-    return position
+    debug_print(serpent.block('valid_position - x:' .. valid_position.x .. ' y:' .. valid_position.y))
+
+    return valid_position
 end
 
 local function is_unit_valid(biter)
@@ -238,7 +247,8 @@ local function refresh_active_unit_threat()
             active_biters[k] = nil
         end
     end
-    WD.set('active_biter_threat', math_round(biter_threat * global.biter_health_boost, 2))
+    local biter_health_boost = BiterHealthBooster.get('biter_health_boost')
+    WD.set('active_biter_threat', math_round(biter_threat * biter_health_boost, 2))
     debug_print('refresh_active_unit_threat - new value ' .. active_biter_threat)
 end
 
@@ -251,12 +261,14 @@ local function time_out_biters()
         WD.set('active_biter_count', 50)
     end
 
+    local biter_health_boost = BiterHealthBooster.get('biter_health_boost')
+
     for k, biter in pairs(active_biters) do
         if not is_unit_valid(biter) then
             WD.set('active_biter_count', active_biter_count - 1)
             if biter.entity then
                 if biter.entity.valid then
-                    WD.set('active_biter_threat', active_biter_threat - math_round(threat_values[biter.entity.name] * global.biter_health_boost, 2))
+                    WD.set('active_biter_threat', active_biter_threat - math_round(threat_values[biter.entity.name] * biter_health_boost, 2))
                     if biter.entity.force.index == 2 then
                         biter.entity.destroy()
                     end
@@ -373,7 +385,7 @@ local function set_enemy_evolution()
     end
     --damage_increase = math_round(damage_increase + threat * 0.0000025, 3)
 
-    global.biter_health_boost = biter_h_boost
+    BiterHealthBooster.set('biter_health_boost', biter_h_boost)
     --game.forces.enemy.set_ammo_damage_modifier("melee", damage_increase)
     --game.forces.enemy.set_ammo_damage_modifier("biological", damage_increase)
     game.forces.enemy.evolution_factor = evolution_factor
@@ -440,7 +452,7 @@ local function spawn_biter(surface, is_boss_biter)
         end
     end
 
-    local boosted_health = global.biter_health_boost
+    local boosted_health = BiterHealthBooster.get('biter_health_boost')
 
     local name
     if math_random(1, 100) > 73 then
@@ -455,26 +467,25 @@ local function spawn_biter(surface, is_boss_biter)
     biter.ai_settings.allow_try_return_to_spawner = true
     biter.ai_settings.do_separation = true
 
+    local increase_health_per_wave = WD.get('increase_health_per_wave')
+
+    if increase_health_per_wave and not is_boss_biter then
+        local modified_unit_health = WD.get('modified_unit_health')
+        BiterHealthBooster.add_unit(biter, modified_unit_health.current_value)
+    end
+
     if is_boss_biter then
-        local modified_boss_health = WD.get('modified_boss_health')
-        if modified_boss_health then
-            local wave_number = WD.get('wave_number')
-            if boosted_health == 1 then
-                boosted_health = 1.25
-            end
-            boosted_health = boosted_health * (wave_number * 0.04)
-            local sum = boosted_health * 5
-            debug_print('Boss Health Boosted: ' .. sum)
-            if sum >= 150 then
-                sum = 150
-            end
-            BiterHealthBooster.add_boss_unit(biter, sum, 0.55)
+        local increase_boss_health_per_wave = WD.get('increase_boss_health_per_wave')
+        if increase_boss_health_per_wave then
+            local modified_boss_unit_health = WD.get('modified_boss_unit_health')
+            BiterHealthBooster.add_boss_unit(biter, modified_boss_unit_health, 0.55)
         else
             local sum = boosted_health * 5
             debug_print('Boss Health Boosted: ' .. sum)
             BiterHealthBooster.add_boss_unit(biter, sum, 0.55)
         end
     end
+
     WD.set('active_biters')[biter.unit_number] = {entity = biter, spawn_tick = game.tick}
     local active_biter_count = WD.get('active_biter_count')
     WD.set('active_biter_count', active_biter_count + 1)
@@ -501,12 +512,48 @@ local function increase_biter_damage()
     end
 
     local e = game.forces.enemy
-    local new = Difficulty.get().difficulty_vote_value * 0.08
+    local new = Difficulty.get().difficulty_vote_value * 0.04
+    local melee = new
+    local bio = new - 0.02
     local e_old_melee = e.get_ammo_damage_modifier('melee')
     local e_old_biological = e.get_ammo_damage_modifier('biological')
 
-    e.set_ammo_damage_modifier('melee', new + e_old_melee)
-    e.set_ammo_damage_modifier('biological', new + e_old_biological)
+    debug_print('Melee: ' .. melee + e_old_melee)
+    debug_print('Biological: ' .. bio + e_old_biological)
+
+    e.set_ammo_damage_modifier('melee', melee + e_old_melee)
+    e.set_ammo_damage_modifier('biological', bio + e_old_biological)
+end
+
+local function increase_biters_health()
+    local increase_health_per_wave = WD.get('increase_health_per_wave')
+    if not increase_health_per_wave then
+        return
+    end
+
+    local boosted_health = BiterHealthBooster.get('biter_health_boost')
+    local wave_number = WD.get('wave_number')
+
+    -- this sets normal units health
+    local modified_unit_health = WD.get('modified_unit_health')
+    if modified_unit_health.current_value > modified_unit_health.limit_value then
+        modified_unit_health.current_value = modified_unit_health.limit_value
+    end
+    debug_print('[HEALTHBOOSTER] > Normal Units Health Boosted: ' .. modified_unit_health.current_value)
+    WD.set('modified_unit_health').current_value = modified_unit_health.current_value + modified_unit_health.health_increase_per_boss_wave
+
+    -- this sets boss units health
+    if boosted_health == 1 then
+        boosted_health = 1.25
+    end
+    boosted_health = boosted_health * (wave_number * 0.04)
+    local sum = boosted_health * 5
+    debug_print('[HEALTHBOOSTER] > Boss Health Boosted: ' .. sum)
+    if sum >= 300 then
+        sum = 300
+    end
+
+    WD.set('modified_boss_unit_health', sum)
 end
 
 local function set_next_wave()
@@ -521,6 +568,7 @@ local function set_next_wave()
     end
     if wave_number % 25 == 0 then
         increase_biter_damage()
+        increase_biters_health()
         WD.set('boss_wave', true)
         WD.set('boss_wave_warning', true)
         local alert_boss_wave = WD.get('alert_boss_wave')

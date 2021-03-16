@@ -15,8 +15,10 @@ local votefree = {}
 local settings = {
     playtime_for_vote = 25920000, -- 5 days
     playtime_for_instant_jail = 103680000, -- 20 days
-    votejail_count = 5
+    votejail_count = 5,
+    valid_surface = 'nauvis'
 }
+
 local set_data = Server.set_data
 local try_get_data = Server.try_get_data
 local concat = table.concat
@@ -213,6 +215,12 @@ local teleport_player_to_gulag = function(player, action)
         end
 
         local surface = game.surfaces[p_data.fallback_surface_index]
+        if not surface or not surface.valid then
+            if settings.valid_surface then
+                surface = game.surfaces[settings.valid_surface]
+            end
+        end
+
         local p = p_data.position
         local p_group = game.permissions.get_group(p_data.p_group_id)
         p_group.add_player(player)
@@ -281,6 +289,10 @@ local validate_args = function(data)
     local playtime = data.playtime
     local message = data.message
     local cmd = data.cmd
+
+    if not griefer then
+        return
+    end
 
     if not type(griefer) == 'string' then
         Utils.print_to(player, 'Invalid name.')
@@ -387,7 +399,7 @@ local vote_to_free = function(player, griefer)
     return
 end
 
-local jail = function(player, griefer, msg)
+local jail = function(player, griefer, msg, raised)
     player = player or 'script'
     if jailed[griefer] then
         return false
@@ -414,7 +426,9 @@ local jail = function(player, griefer, msg)
     end
 
     jailed[griefer] = {jailed = true, actor = player, reason = msg}
-    set_data(jailed_data_set, griefer, {jailed = true, actor = player, reason = msg})
+    if not raised then
+        set_data(jailed_data_set, griefer, {jailed = true, actor = player, reason = msg})
+    end
 
     Utils.print_to(nil, message)
     Utils.action_warning_embed('{Jailed}', message)
@@ -629,9 +643,9 @@ Server.on_data_set_changed(
     function(data)
         if data and data.value then
             if data.value.jailed and data.value.actor then
-                jail(data.value.actor, data.key)
+                jail(data.value.actor, data.key, data.value.reason, true)
             end
-        else
+        elseif data then
             free('script', data.key)
         end
     end
@@ -658,6 +672,11 @@ function Public.required_playtime_for_instant_jail(value)
         settings.playtime_for_instant_jail = value
     end
     return settings.playtime_for_instant_jail
+end
+
+function Public.set_valid_surface(value)
+    settings.valid_surface = value or 'nauvis'
+    return settings.valid_surface
 end
 
 function Public.required_playtime_for_vote(value)

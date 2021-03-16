@@ -48,6 +48,35 @@ function Public.create_surface()
             ['tile:deep-water:probability'] = -10000
         }
     }
+    local modded = is_game_modded()
+    if modded then
+        map_gen_settings.autoplace_controls = {}
+        if game.active_mods['Krastorio2'] then
+            map_gen_settings.autoplace_controls.imersite = {
+                frequency = 1,
+                richness = 1,
+                size = 1
+            }
+            map_gen_settings.autoplace_controls['mineral-water'] = {
+                frequency = 1,
+                richness = 1,
+                size = 1
+            }
+            map_gen_settings.autoplace_controls['rare-metals'] = {
+                frequency = 1,
+                richness = 1,
+                size = 1
+            }
+        end
+        if game.active_mods['Factorio-Tiberium'] then
+            map_gen_settings.autoplace_controls.tibGrowthNode = {
+                frequency = 1,
+                richness = 1,
+                size = 1
+            }
+        end
+    end
+
     local mine = {}
     mine['control-setting:moisture:bias'] = 0.33
     mine['control-setting:moisture:frequency:multiplier'] = 1
@@ -59,6 +88,8 @@ function Public.create_surface()
     else
         this.active_surface_index = Reset.soft_reset_map(game.surfaces[this.active_surface_index], map_gen_settings, starting_items).index
     end
+
+    -- this.soft_reset_counter = Reset.get_reset_counter()
 
     if not this.cleared_nauvis then
         local mgs = game.surfaces['nauvis'].map_gen_settings
@@ -72,12 +103,19 @@ function Public.create_surface()
     return this.active_surface_index
 end
 
+--- Returns the surface index.
 function Public.get_active_surface()
     return this.active_surface
 end
 
+--- Returns the surface name.
 function Public.get_surface_name()
     return this.surface_name
+end
+
+--- Returns the amount of times the server has soft restarted.
+function Public.get_reset_counter()
+    return this.soft_reset_counter
 end
 
 function Public.get(key)

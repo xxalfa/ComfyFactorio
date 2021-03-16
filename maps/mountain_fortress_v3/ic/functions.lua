@@ -27,7 +27,10 @@ end
 local function get_trusted_system(this, player)
     if not this.trust_system[player.index] then
         this.trust_system[player.index] = {
-            [player.name] = true
+            players = {
+                [player.name] = true
+            },
+            allow_anyone = 'right'
         }
     end
 
@@ -48,10 +51,17 @@ local function render_owner_text(renders, player, entity, new_owner)
     if renders[player.index] then
         rendering.destroy(renders[player.index])
     end
+
+    local ce_name = entity.name
+
+    if ce_name == 'kr-advanced-tank' then
+        ce_name = 'Tank'
+    end
+
     if new_owner then
         renders[new_owner.index] =
             rendering.draw_text {
-            text = '## - ' .. new_owner.name .. "'s " .. entity.name .. ' - ##',
+            text = '## - ' .. new_owner.name .. "'s " .. ce_name .. ' - ##',
             surface = entity.surface,
             target = entity,
             target_offset = {0, -2.6},
@@ -64,7 +74,7 @@ local function render_owner_text(renders, player, entity, new_owner)
     else
         renders[player.index] =
             rendering.draw_text {
-            text = '## - ' .. player.name .. "'s " .. entity.name .. ' - ##',
+            text = '## - ' .. player.name .. "'s " .. ce_name .. ' - ##',
             surface = entity.surface,
             target = entity,
             target_offset = {0, -2.6},
@@ -644,7 +654,7 @@ function Public.validate_owner(ic, player, entity)
             local p = game.players[car.owner]
             local list = get_trusted_system(ic, p)
             if p and p.valid and p.connected then
-                if list[player.name] then
+                if list.players[player.name] then
                     return
                 end
             end
@@ -696,8 +706,13 @@ function Public.create_car_room(ic, car)
     local surface = car.surface
     local car_areas = ic.car_areas
     local entity_name = car.name
+    local entity_type = car.type
     local area = car_areas[entity_name]
     local tiles = {}
+
+    if not area then
+        area = car_areas[entity_type]
+    end
 
     for x = area.left_top.x, area.right_bottom.x - 1, 1 do
         for y = area.left_top.y + 2, area.right_bottom.y - 3, 1 do
@@ -807,6 +822,9 @@ function Public.create_car(ic, event)
 
     local car_areas = ic.car_areas
     local car_area = car_areas[ce.name]
+    if not car_area then
+        car_area = car_areas[ce.type]
+    end
 
     ic.cars[un] = {
         entity = ce,
@@ -816,7 +834,8 @@ function Public.create_car(ic, event)
         },
         doors = {},
         owner = player.index,
-        name = ce.name
+        name = ce.name,
+        type = ce.type
     }
 
     local car = ic.cars[un]
@@ -879,10 +898,12 @@ function Public.use_door_with_entity(ic, player, door)
 
     local owner = game.players[car.owner]
     local list = get_trusted_system(ic, owner)
-    if owner and owner.valid and player.connected then
-        if not list[player.name] and not player.admin then
-            player.driving = false
-            return player.print('You have not been approved by ' .. owner.name .. ' to enter their vehicle.', Color.warning)
+    if owner and owner.valid and owner.index ~= player.index and player.connected then
+        if list.allow_anyone == 'right' then
+            if not list.players[player.name] and not player.admin then
+                player.driving = false
+                return player.print('You have not been approved by ' .. owner.name .. ' to enter their vehicle.', Color.warning)
+            end
         end
     end
 

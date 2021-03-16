@@ -189,7 +189,7 @@ function Public.reset_table()
         compare_next = 200,
         distance_from = 2
     }
-    this.spidertron_unlocked_at_wave = 11
+    this.spidertron_unlocked_at_zone = 11
     -- this.void_or_tile = 'lab-dark-2'
     this.void_or_tile = 'out-of-map'
     this.validate_spider = {}
@@ -200,6 +200,8 @@ function Public.reset_table()
         multiply = 0.25,
         highest = 10
     }
+    this.market_announce = game.tick + 1200
+    this.check_heavy_damage = true
 
     --!reset player tables
     for _, player in pairs(this.players) do
@@ -223,6 +225,12 @@ function Public.set(key, value)
         return this[key]
     else
         return this
+    end
+end
+
+function Public.remove(key)
+    if key then
+        this[key] = nil
     end
 end
 
