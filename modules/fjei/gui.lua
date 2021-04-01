@@ -6,7 +6,7 @@ local table_remove = table.remove
 local table_insert = table.insert
 local main_window_width = 228
 local recipe_window_width = 480
-local recipe_window_amount_width = 38
+local recipe_window_amount_width = 40
 local recipe_window_item_name_width = 128
 local recipe_window_position = "screen"
 local column_count = 5
@@ -43,7 +43,7 @@ end
 
 local function get_formatted_amount(amount)
 	if amount < 1000 then
-		amount = amount .. " x "
+		amount = amount .. " x "
 		return amount
 	end
 	if amount >= 1000000 then 	
@@ -301,10 +301,12 @@ local function draw_recipe(player, container, recipe_name)
 		local tt = t.add({type = "table", column_count = 3})
 		
 		local amount = product.amount
-		if not amount then amount = 1 end		
+		if not amount then
+			amount = math.round((product.amount_min + product.amount_max) * 0.5, 2) 
+		end		
 		amount = amount * product.probability
 
-		local element = tt.add({type = "label", caption = get_formatted_amount(amount)})
+		local element = tt.add({type = "label", caption = get_formatted_amount(amount)})	
 		element.style.minimal_width = recipe_window_amount_width
 		element.style.maximal_width = recipe_window_amount_width
 		element.style.single_line = false
@@ -326,7 +328,11 @@ local function draw_recipe(player, container, recipe_name)
 			element.style.maximal_width = recipe_window_item_name_width
 			element.style.single_line = false
 			element.style.font = "default"
-		end	
+		end
+		if not product.amount or not product.probability or product.probability ~= 1 then
+			element.tooltip = "This number is an approximate value."
+			element.style.font_color = {255, 255, 0}
+		end
 	end
 	
 	local element = container.add({type = "label", caption = "Ingredients:"})
