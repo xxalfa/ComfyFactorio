@@ -150,6 +150,9 @@ require 'modules.autostash'
 --require 'maps.territorial_control'
 --require 'maps.junkyard_pvp.main'
 
+--![[Minesweeper?]]--
+--require 'maps.minesweeper.main'
+
 --![[A green maze]]--
 --require 'maps.hedge_maze'
 
