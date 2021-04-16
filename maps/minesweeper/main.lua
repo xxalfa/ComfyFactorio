@@ -61,14 +61,16 @@ end
 
 local function kaboom(position)
 	local surface = game.surfaces[1]
-	surface.create_entity({name = "atomic-rocket", position = {position.x + 1, position.y + 1}, target = {position.x + 1, position.y + 1}, speed = 1})
+	surface.create_entity({name = "atomic-rocket", position = {position.x + 1, position.y + 1}, target = {position.x + 1, position.y + 1}, speed = 1, force = "minesweeper"})
 end
 
 local function disarm_reward(position)
 	local surface = game.surfaces[1]
 	local distance_to_center = math.sqrt(position.x ^ 2 + position.y ^ 2)
 	
-	if math.random(1, 4) == 1 then
+	if math.random(1, 4) ~= 1 then return end
+	
+	if math.random(1, 8) == 1 then
 		local blacklist = LootRaffle.get_tech_blacklist(0.05 + distance_to_center * 0.0002)
 		local item_stacks = LootRaffle.roll(math.random(16, 48) + math.floor(distance_to_center * 0.1), 16, blacklist)
 		local container = surface.create_entity({name = "crash-site-chest-" .. math.random(1, 2), position = {position.x + math.random(0, 1), position.y + math.random(0, 1)}, force = "neutral"})
@@ -77,7 +79,7 @@ local function disarm_reward(position)
 		return
 	end
 	
-	if math.random(1, 16) == 1 then
+	if math.random(1, 32) == 1 then
 		surface.create_entity({name = "crude-oil", position = {position.x + 1, position.y + 1}, amount = 301000 + distance_to_center * 300})
 		return
 	end
@@ -110,14 +112,10 @@ local function clear_cell(position)
 	local surface = game.surfaces[1]
 	
 	local noise = Get_noise("smol_areas", position, surface.map_gen_settings.seed)
-	if math.abs(noise) > 0.15 then
+	if math.abs(noise) > 0.15 or surface.count_entities_filtered({type = {"resource", "container"}, area = {{position.x + 0.25, position.y + 0.25}, {position.x + 1.75, position.y + 1.75}}}) > 0 then
 		tile_name = "grass-" .. math.floor((noise * 10) % 3 + 1)
 	else
 		tile_name = "water-shallow"
-	end
-	
-	if surface.count_entities_filtered({type = {"resource", "container"}, area = {{position.x + 0.25, position.y + 0.25}, {position.x + 1.75, position.y + 1.75}}}) > 0 then
-		tile_name = "landfill"
 	end
 	
 	for x = 0, 1, 1 do
@@ -273,6 +271,7 @@ end
 local function deny_building(event)
 	local entity = event.created_entity
 	if not entity.valid then return end
+	if entity.name == "entity-ghost" then return end
 	local tile = entity.surface.get_tile(entity.position)
 	if tile.name == "nuclear-ground" or tile.hidden_tile == "nuclear-ground" then
 		if event.player_index then
@@ -307,7 +306,21 @@ local function on_player_respawned(event)
 	player.insert({name = "stone-furnace", count = 1})
 end
 
+local function on_entity_died(event)
+	local entity = event.entity
+	if not entity.valid then return end
+	if entity.force.index ~= 2 then return end
+	local force = event.force
+	if not force then return end	
+	if force.name ~= "minesweeper" then return end
+	local revived_entity = entity.clone({position = entity.position})
+	revived_entity.health = entity.prototype.max_health
+	entity.destroy()
+end
+
 local function on_init()
+	game.create_force("minesweeper")
+
 	local surface = game.surfaces[1]
 	local mgs = surface.map_gen_settings
 	mgs.cliff_settings = {cliff_elevation_interval = 0, cliff_elevation_0 = 0}
@@ -325,7 +338,7 @@ local function on_init()
 
 	minesweeper.cells = {}
 	minesweeper.player_data = {}
-	minesweeper.average_mines_per_chunk = 40
+	minesweeper.average_mines_per_chunk = 48
 	minesweeper.active_mines = 0
 	minesweeper.disarmed_mines = 0
 	minesweeper.triggered_mines = 0
@@ -352,6 +365,7 @@ Event.on_init(on_init)
 Event.add(defines.events.on_chunk_generated, on_chunk_generated)
 Event.add(defines.events.on_player_changed_position, on_player_changed_position)
 Event.add(defines.events.on_built_entity, on_built_entity)
+Event.add(defines.events.on_entity_died, on_entity_died)
 Event.add(defines.events.on_robot_built_entity, on_robot_built_entity)
 Event.add(defines.events.on_player_created, on_player_created)
 Event.add(defines.events.on_player_respawned, on_player_respawned)
