@@ -3,6 +3,7 @@
 
 require 'modules.satellite_score'
 
+local Map_score = require "comfy_panel.map_score"
 local LootRaffle = require "functions.loot_raffle"
 local Map = require "modules.map_info"
 local Global = require 'utils.global'
@@ -24,6 +25,7 @@ local number_colors = {
 	[6] = {150, 0, 150},
 	[7] = {0, 0, 0},
 	[8] = {177, 177, 177},
+	[11] = {150, 0, 150},
 }
 
 local chunk_divide_vectors = {}
@@ -48,6 +50,16 @@ for _ = 1, 5, 1 do table.insert(ores, "coal") end
 for _ = 1, 4, 1 do table.insert(ores, "stone") end
 for _ = 1, 1, 1 do table.insert(ores, "uranium-ore") end
 
+local function set_solving_vectors(r)
+	r = r * 2
+	minesweeper.solving_vectors = {}
+	for x = r * -1, r, 2 do
+		for y = r * -1, r, 2 do
+			table.insert(minesweeper.solving_vectors, {x,y})
+		end
+	end
+end
+
 local function position_to_string(p)
 	return p.x .. "_" .. p.y
 end
@@ -68,7 +80,14 @@ local function disarm_reward(position)
 	local surface = game.surfaces[1]
 	local distance_to_center = math.sqrt(position.x ^ 2 + position.y ^ 2)
 	
-	if math.random(1, 4) ~= 1 then return end
+	surface.create_entity({
+		name = "flying-text",
+		position = {position.x + 1, position.y + 1},
+		text = "Mine disarmed!",
+		color = {r=0.98, g=0.66, b=0.22}
+	})
+	
+	if math.random(1, 3) ~= 1 then return end
 	
 	if math.random(1, 8) == 1 then
 		local blacklist = LootRaffle.get_tech_blacklist(0.05 + distance_to_center * 0.0002)
@@ -105,7 +124,14 @@ local function update_rendering(cell, position)
 		color = {125, 125, 125}
 	end
 	
-	cell[2] = rendering.draw_text{text=cell[1], surface=game.surfaces[1], target={position.x + 0.55, position.y - 0.25}, color=color, scale=3, font="scenario-message-dialog", draw_on_ground=true, scale_with_zoom=false, only_in_alt_mode=false}
+	local text
+	if cell[1] == 11 then
+		text = "X" 
+	else
+		text = cell[1]
+	end
+	
+	cell[2] = rendering.draw_text{text=text, surface=game.surfaces[1], target={position.x + 0.55, position.y - 0.25}, color=color, scale=3, font="scenario-message-dialog", draw_on_ground=true, scale_with_zoom=false, only_in_alt_mode=false}
 end
 
 local function clear_cell(position)
@@ -139,14 +165,14 @@ local function update_cell(position)
 		minesweeper.cells[key] = {-1}
 	end
 	
-	if minesweeper.cells[key][1] == 10 then return end
+	if minesweeper.cells[key][1] > 9 then return end
 
 	local adjacent_mine_count = 0
 	for _, vector in pairs(cell_update_vectors) do
 		local p = {x = position.x + vector[1], y = position.y + vector[2]}
 		local key = position_to_string(p)
 		if minesweeper.cells[key] then
-			if minesweeper.cells[key][1] == 10 then		
+			if minesweeper.cells[key][1] > 9 then		
 				adjacent_mine_count = adjacent_mine_count + 1
 			end
 		end
@@ -160,9 +186,11 @@ end
 local function visit_cell(position)
 	local key = position_to_string(position)
 	local cell = minesweeper.cells[key]
+	local score_change = 0
 	if cell then
 		if cell[1] == 10 then
 			kaboom(position)
+			score_change = -8
 			cell[1] = -1
 			for _, vector in pairs(cell_update_vectors) do
 				local p = {x = position.x + vector[1], y = position.y + vector[2]}
@@ -184,33 +212,69 @@ local function visit_cell(position)
 		end		
 		clear_cell(position)
 	end
+	
+	return score_change
 end
 
-local function disarm_mine(entity)
+local function are_mines_marked_around_target(position)
+	local marked_positions = {}
+	for _, vector in pairs(minesweeper.solving_vectors) do
+		local p = {x = position.x + vector[1], y = position.y + vector[2]}
+		local key = position_to_string(p)
+		local cell = minesweeper.cells[key]
+		if cell then
+			if cell[1] == 10 then return end
+			if cell[1] == 11 then table.insert(marked_positions, p) end
+		end
+	end
+	return marked_positions
+end
+
+local function solve_attempt(position)
+	for _, vector in pairs(minesweeper.solving_vectors) do
+		local p = {x = position.x + vector[1], y = position.y + vector[2]}
+		local key = position_to_string(p)
+		local cell = minesweeper.cells[key]
+		if cell and cell[1] > 10 then
+			local marked_positions = are_mines_marked_around_target(p)
+			if marked_positions then
+				for _, p in pairs(marked_positions) do
+					minesweeper.cells[position_to_string(p)][1] = -1
+					visit_cell(p)
+					disarm_reward(p)
+				end
+			end
+		end
+	end
+end
+
+local function mark_mine(entity)
 	local position = position_to_cell_position(entity.position)
 	local key = position_to_string(position)
 	local cell = minesweeper.cells[key]
+	local score_change = 0
 	
 	--Success
-	if cell and cell[1] == 10 then
+	if cell and cell[1] > 9 then
+		if cell[1] == 10 then score_change = 1 end	
+		
 		entity.surface.create_entity({
 			name = "flying-text",
 			position = entity.position,
-			text = "Mine disarmed!",
+			text = "Mine marked.",
 			color = {r=0.98, g=0.66, b=0.22}
 		})
-		disarm_reward(position)
-		minesweeper.disarmed_mines = minesweeper.disarmed_mines + 1
-		cell[1] = -1
-		visit_cell(position)
-		for _, vector in pairs(cell_update_vectors) do
-			local p = {x = position.x + vector[1], y = position.y + vector[2]}
-			local key = position_to_string(p)
-			if minesweeper.cells[key] then	update_cell(p) end
-		end		
+				
+		--	
+		cell[1] = 11
+		update_rendering(cell, position)
+		
 		entity.destroy()
 		game.surfaces.nauvis.spill_item_stack({position.x + 1, position.y + 1}, {name = 'stone-furnace', count = 1}, true)
-		return
+
+		solve_attempt(position)
+	
+		return score_change
 	end
 	
 	--Trigger all adjecant mines when missplacing a disarming furnace.
@@ -219,7 +283,9 @@ local function disarm_mine(entity)
 		local key = position_to_string(p)
 		if minesweeper.cells[key] and minesweeper.cells[key][1] == 10 then
 			kaboom(p)
+			score_change = score_change - 8
 			minesweeper.cells[key][1] = -1
+			solve_attempt(p)
 		end
 	end
 	for _, vector in pairs(cell_update_vectors) do
@@ -229,6 +295,7 @@ local function disarm_mine(entity)
 			visit_cell(p)
 		end
 	end
+	return score_change
 end
 
 local function add_mines_to_chunk(left_top)	
@@ -243,6 +310,8 @@ local function add_mines_to_chunk(left_top)
 		local p = {x = left_top.x + vector[1], y = left_top.y + vector[2]}		
 		minesweeper.cells[position_to_string(p)] = {10}
 		minesweeper.active_mines = minesweeper.active_mines + 1
+		
+		--update_rendering(minesweeper.cells[position_to_string(p)], p)
 	end
 end
 
@@ -264,8 +333,11 @@ end
 local function on_player_changed_position(event)
 	local player = game.players[event.player_index]
 	local tile = game.surfaces.nauvis.get_tile(player.position)	
-	if tile.name ~= "nuclear-ground" and tile.hidden_tile ~= "nuclear-ground" then return end	
-	visit_cell(position_to_cell_position(player.position))	
+	if tile.name ~= "nuclear-ground" and tile.hidden_tile ~= "nuclear-ground" then return end
+	local cell_position = position_to_cell_position(player.position)
+	local score_change = visit_cell(cell_position)
+	if score_change < 0 then solve_attempt(cell_position) end
+	Map_score.set_score(player, Map_score.get_score(player) + score_change)
 end
 
 local function deny_building(event)
@@ -275,11 +347,13 @@ local function deny_building(event)
 	local tile = entity.surface.get_tile(entity.position)
 	if tile.name == "nuclear-ground" or tile.hidden_tile == "nuclear-ground" then
 		if event.player_index then
+			local player = game.players[event.player_index]
 			if entity.position.x % 2 == 1 and entity.position.y % 2 == 1 and entity.name == "stone-furnace" then
-				disarm_mine(entity)
+				local score_change = mark_mine(entity)
+				Map_score.set_score(player, Map_score.get_score(player) + score_change)
 				return
 			end	
-			game.players[event.player_index].insert({name = entity.name, count = 1})
+			player.insert({name = entity.name, count = 1})
 		else
 			local inventory = event.robot.get_inventory(defines.inventory.robot_cargo)
 			inventory.insert({name = entity.name, count = 1})
@@ -321,6 +395,8 @@ end
 local function on_init()
 	game.create_force("minesweeper")
 
+	global.custom_highscore.description = "Minesweep rank:"
+
 	local surface = game.surfaces[1]
 	local mgs = surface.map_gen_settings
 	mgs.cliff_settings = {cliff_elevation_interval = 0, cliff_elevation_0 = 0}
@@ -338,10 +414,12 @@ local function on_init()
 
 	minesweeper.cells = {}
 	minesweeper.player_data = {}
-	minesweeper.average_mines_per_chunk = 48
+	minesweeper.average_mines_per_chunk = 28
 	minesweeper.active_mines = 0
 	minesweeper.disarmed_mines = 0
 	minesweeper.triggered_mines = 0
+	
+	set_solving_vectors(4) -- the vectors which have to be solved, for the set of mines do be disarmed successfully
 	
 	local T = Map.Pop_info()
 	T.main_caption = "Minesweeper"
@@ -351,10 +429,12 @@ local function on_init()
 		"They have left long ago, leaving an inhabitable wasteland.\n",
 		"It also seems riddled with buried explosives.\n\n",
 		
-		"Disarm mines with your stone furnace.\n",
-		"Successful disarms will yield rewards!\n\n",
-		
-		"Faulty disarming may trigger surrounding mines!!\n",
+		"Mark mines with your stone furnace.\n",
+		"Marked mines are save to walk on.\n",
+		"When enough mines in an area are marked,\n",
+		"they will disarm and yield rewards!\n\n",
+
+		"Faulty marking may trigger surrounding mines!!\n",
 	})
 	T.main_caption_color = {r = 255, g = 125, b = 55}
 	T.sub_caption_color = {r = 0, g = 250, b = 150}
