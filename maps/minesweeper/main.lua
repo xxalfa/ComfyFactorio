@@ -482,12 +482,15 @@ local function on_entity_died(event)
 end
 
 local function on_nth_tick()
-	local position = minesweeper.zero_queue[1]
-	if not position then return end
-	local key = position_to_string(position)
-	local cell = minesweeper.cells[key]
-	if cell then visit_cell(position) end
-	table.remove(minesweeper.zero_queue, 1)
+	for k, position in pairs(minesweeper.zero_queue) do
+		local key = position_to_string(position)
+		local cell = minesweeper.cells[key]
+		if cell then
+			visit_cell(position)
+			break
+		end
+		table.remove(minesweeper.zero_queue, k)
+	end
 end
 
 local function on_init()
@@ -542,7 +545,7 @@ end
 
 local Event = require 'utils.event'
 Event.on_init(on_init)
-Event.on_nth_tick(3, on_nth_tick)
+Event.on_nth_tick(8, on_nth_tick)
 Event.add(defines.events.on_chunk_generated, on_chunk_generated)
 Event.add(defines.events.on_player_changed_position, on_player_changed_position)
 Event.add(defines.events.on_built_entity, on_built_entity)
