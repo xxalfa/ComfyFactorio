@@ -1,5 +1,9 @@
+--[[
+It's a Minesweeper thingy - MewMew
 -- 1 to 9 = adjecant mines
 -- 10 = mine
+-- 11 = marked mine
+]]--
 
 require 'modules.satellite_score'
 
@@ -36,6 +40,13 @@ for x = 0, 30, 2 do
 end
 local size_of_chunk_divide_vectors = #chunk_divide_vectors
 
+local chunk_vectors = {}
+for x = -32, 32, 32 do
+	for y = -32, 32, 32 do
+		table.insert(chunk_vectors, {x,y})
+	end
+end
+
 local cell_update_vectors = {}
 for x = -2, 2, 2 do
 	for y = -2, 2, 2 do
@@ -43,22 +54,35 @@ for x = -2, 2, 2 do
 	end
 end
 
+local cell_adjecant_vectors = {}
+for x = -2, 2, 2 do
+	for y = -2, 2, 2 do
+		if x == 0 and y == 0 then
+		else
+			table.insert(cell_adjecant_vectors, {x,y})
+		end
+	end
+end
+
+local solving_vector_tables = {}
+local i = 1
+for r = 3, 10, 1 do
+	solving_vector_tables[i] = {}
+	for x = r * -2, r * 2, 2 do
+		for y = r * -2, r * 2, 2 do			
+			table.insert(solving_vector_tables[i], {x,y})			
+		end
+	end
+	i = i + 1
+end
+local size_of_solving_vector_tables = #solving_vector_tables
+
 local ores = {}
 for _ = 1, 8, 1 do table.insert(ores, "iron-ore") end
 for _ = 1, 6, 1 do table.insert(ores, "copper-ore") end
 for _ = 1, 5, 1 do table.insert(ores, "coal") end
 for _ = 1, 4, 1 do table.insert(ores, "stone") end
 for _ = 1, 1, 1 do table.insert(ores, "uranium-ore") end
-
-local function set_solving_vectors(r)
-	r = r * 2
-	minesweeper.solving_vectors = {}
-	for x = r * -1, r, 2 do
-		for y = r * -1, r, 2 do
-			table.insert(minesweeper.solving_vectors, {x,y})
-		end
-	end
-end
 
 local function position_to_string(p)
 	return p.x .. "_" .. p.y
@@ -90,8 +114,8 @@ local function disarm_reward(position)
 	if math.random(1, 3) ~= 1 then return end
 	
 	if math.random(1, 8) == 1 then
-		local blacklist = LootRaffle.get_tech_blacklist(0.05 + distance_to_center * 0.0002)
-		local item_stacks = LootRaffle.roll(math.random(16, 48) + math.floor(distance_to_center * 0.1), 16, blacklist)
+		local blacklist = LootRaffle.get_tech_blacklist(0.05 + distance_to_center * 0.00025)	--max loot tier at ~4000 tiles
+		local item_stacks = LootRaffle.roll(math.random(16, 48) + math.floor(distance_to_center * 0.2), 16, blacklist)
 		local container = surface.create_entity({name = "crash-site-chest-" .. math.random(1, 2), position = {position.x + math.random(0, 1), position.y + math.random(0, 1)}, force = "neutral"})
 		for _, item_stack in pairs(item_stacks) do container.insert(item_stack) end
 		container.minable = false
@@ -138,8 +162,13 @@ local function clear_cell(position)
 	local surface = game.surfaces[1]
 	
 	local noise = Get_noise("smol_areas", position, surface.map_gen_settings.seed)
-	if math.abs(noise) > 0.15 or surface.count_entities_filtered({type = {"resource", "container"}, area = {{position.x + 0.25, position.y + 0.25}, {position.x + 1.75, position.y + 1.75}}}) > 0 then
-		tile_name = "grass-" .. math.floor((noise * 10) % 3 + 1)
+	local noise_2 = Get_noise("smol_areas", position, surface.map_gen_settings.seed + 50000)
+	if noise_2 > 0.50 or math.abs(noise) > 0.14 or surface.count_entities_filtered({type = {"resource", "container"}, area = {{position.x + 0.25, position.y + 0.25}, {position.x + 1.75, position.y + 1.75}}}) > 0 then
+		if noise < 0 then
+			tile_name = "sand-" .. math.floor((noise * 10) % 3 + 1)
+		else
+			tile_name = "grass-" .. math.floor((noise * 10) % 3 + 1)
+		end		
 	else
 		tile_name = "water-shallow"
 	end
@@ -148,11 +177,14 @@ local function clear_cell(position)
 		for y = 0, 1, 1 do
 			local p = {x = position.x + x, y = position.y + y}
 			surface.set_tiles({{name = tile_name, position = p}}, true)
+			if math.random(1, 24) == 1 and tile_name == "water-shallow" then
+				surface.create_entity({name = "fish", position = p})
+			end
 		end
 	end	
 	local key = position_to_string(position)
 	local cell = minesweeper.cells[key]
-	if cell[2] then rendering.destroy(cell[2]) end
+	if cell and cell[2] then rendering.destroy(cell[2]) end
 	minesweeper.cells[key] = nil
 end
 
@@ -181,6 +213,10 @@ local function update_cell(position)
 	local cell = minesweeper.cells[key]
 	cell[1] = adjacent_mine_count
 	update_rendering(cell, position)
+	
+	if adjacent_mine_count == 0 then
+		table.insert(minesweeper.zero_queue, position)
+	end
 end
 
 local function visit_cell(position)
@@ -216,9 +252,17 @@ local function visit_cell(position)
 	return score_change
 end
 
+local function get_solving_vectors(position)
+	local distance_to_center = math.sqrt(position.x ^ 2 + position.y ^ 2)
+	local key = math.floor(distance_to_center * 0.005) + 1
+	if key > size_of_solving_vector_tables then key = size_of_solving_vector_tables end
+	local solving_vectors = solving_vector_tables[key]
+	return solving_vectors
+end
+
 local function are_mines_marked_around_target(position)
 	local marked_positions = {}
-	for _, vector in pairs(minesweeper.solving_vectors) do
+	for _, vector in pairs(get_solving_vectors(position)) do
 		local p = {x = position.x + vector[1], y = position.y + vector[2]}
 		local key = position_to_string(p)
 		local cell = minesweeper.cells[key]
@@ -231,7 +275,7 @@ local function are_mines_marked_around_target(position)
 end
 
 local function solve_attempt(position)
-	for _, vector in pairs(minesweeper.solving_vectors) do
+	for _, vector in pairs(get_solving_vectors(position)) do
 		local p = {x = position.x + vector[1], y = position.y + vector[2]}
 		local key = position_to_string(p)
 		local cell = minesweeper.cells[key]
@@ -298,20 +342,60 @@ local function mark_mine(entity)
 	return score_change
 end
 
-local function add_mines_to_chunk(left_top)	
-	local mine_count = math.random(minesweeper.average_mines_per_chunk * 0.5, minesweeper.average_mines_per_chunk * 1.5)
+local function get_adjecant_mine_count(position)
+	local count = 0
+	for _, vector in pairs(cell_adjecant_vectors) do
+		local p = {x = position.x + vector[1], y = position.y + vector[2]}
+		local key = position_to_string(p)
+		local cell = minesweeper.cells[key]
+		if cell and cell[1] == 10 then count = count + 1 end
+	end
+	return count
+end
+
+local function add_mines_to_chunk(left_top)
+	local distance_to_center = math.sqrt((left_top.x + 16) ^ 2 + (left_top.y + 16) ^ 2)
+	local base_mine_count = 40
+	local max_mine_count = 128
+	local mine_count = distance_to_center * 0.043 + base_mine_count
+	if mine_count > max_mine_count then mine_count = max_mine_count end
+
 	local shuffle_index = {}
 	for i = 1, size_of_chunk_divide_vectors, 1 do table.insert(shuffle_index, i) end
 	table.shuffle_table(shuffle_index)
 	
-	for i = 1, mine_count, 1 do
-		local key = shuffle_index[i]
-		local vector = chunk_divide_vectors[key]
-		local p = {x = left_top.x + vector[1], y = left_top.y + vector[2]}		
-		minesweeper.cells[position_to_string(p)] = {10}
-		minesweeper.active_mines = minesweeper.active_mines + 1
+	-- place shuffled mines
+	for i = 1, mine_count, 1 do		
+		local vector = chunk_divide_vectors[shuffle_index[i]]
+		local position = {x = left_top.x + vector[1], y = left_top.y + vector[2]}		
+		local key = position_to_string(position)
+		minesweeper.cells[key] = {10}
+		minesweeper.active_mines = minesweeper.active_mines + 1		
+	end
+	
+	-- remove mines that would form a 3x3 block
+	for _, chunk_vector in pairs(chunk_vectors) do
+		local left_top_2 = {x = left_top.x + chunk_vector[1], y = left_top.y + chunk_vector[2]}
 		
-		--update_rendering(minesweeper.cells[position_to_string(p)], p)
+		for _, vector in pairs(chunk_divide_vectors) do
+			local position = {x = left_top_2.x + vector[1], y = left_top_2.y + vector[2]}
+			local key = position_to_string(position)
+			local cell = minesweeper.cells[key]
+			if cell and cell[1] == 10 then		
+				if get_adjecant_mine_count(position) == 8 then
+					--if cell[2] then rendering.destroy(cell[2]) end
+					minesweeper.cells[key] = nil 
+				end			
+			end
+		end
+		--[[
+		for _, vector in pairs(chunk_divide_vectors) do
+			local position = {x = left_top_2.x + vector[1], y = left_top_2.y + vector[2]}
+			local key = position_to_string(position)
+			local cell = minesweeper.cells[key]
+			if cell then update_rendering(cell, position) end
+		end
+		]]
 	end
 end
 
@@ -326,6 +410,11 @@ local function on_chunk_generated(event)
 		end
 	end
 	event.surface.set_tiles(tiles, true)
+	
+	--surface.clear() will cause to trigger on_chunk_generated twice
+	local key = position_to_string(left_top)
+	if minesweeper.chunks[key] then return end
+	minesweeper.chunks[key] = true
 	
 	add_mines_to_chunk(left_top)
 end
@@ -392,6 +481,15 @@ local function on_entity_died(event)
 	entity.destroy()
 end
 
+local function on_nth_tick()
+	local position = minesweeper.zero_queue[1]
+	if not position then return end
+	local key = position_to_string(position)
+	local cell = minesweeper.cells[key]
+	if cell then visit_cell(position) end
+	table.remove(minesweeper.zero_queue, 1)
+end
+
 local function on_init()
 	game.create_force("minesweeper")
 
@@ -412,15 +510,14 @@ local function on_init()
 	surface.map_gen_settings = mgs
 	surface.clear(true)	
 
+	minesweeper.chunks = {}
 	minesweeper.cells = {}
+	minesweeper.zero_queue = {}
 	minesweeper.player_data = {}
-	minesweeper.average_mines_per_chunk = 28
 	minesweeper.active_mines = 0
 	minesweeper.disarmed_mines = 0
 	minesweeper.triggered_mines = 0
-	
-	set_solving_vectors(4) -- the vectors which have to be solved, for the set of mines do be disarmed successfully
-	
+		
 	local T = Map.Pop_info()
 	T.main_caption = "Minesweeper"
 	T.sub_caption =  ""
@@ -432,9 +529,12 @@ local function on_init()
 		"Mark mines with your stone furnace.\n",
 		"Marked mines are save to walk on.\n",
 		"When enough mines in an area are marked,\n",
-		"they will disarm and yield rewards!\n\n",
-
-		"Faulty marking may trigger surrounding mines!!\n",
+		"they will disarm and yield rewards!\n",
+		"Faulty marking may trigger surrounding mines!!\n\n",
+		
+		"As you move away from spawn,\n",
+		"mine density and radius required to disarm will increase.\n",
+		"Crates will contain more loot and ore will have higher yield.\n",		
 	})
 	T.main_caption_color = {r = 255, g = 125, b = 55}
 	T.sub_caption_color = {r = 0, g = 250, b = 150}
@@ -442,6 +542,7 @@ end
 
 local Event = require 'utils.event'
 Event.on_init(on_init)
+Event.on_nth_tick(3, on_nth_tick)
 Event.add(defines.events.on_chunk_generated, on_chunk_generated)
 Event.add(defines.events.on_player_changed_position, on_player_changed_position)
 Event.add(defines.events.on_built_entity, on_built_entity)
