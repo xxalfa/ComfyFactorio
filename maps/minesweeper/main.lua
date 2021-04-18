@@ -120,7 +120,7 @@ end
 local function visit_cell(position)
 	local score_change = 0
 	
-	if not Functions.is_minefield_tile(position) then return score_change end
+	if not Functions.is_minefield_tile(position, true) then return score_change end
 	
 	local key = Functions.position_to_string(position)
 	local cell = minesweeper.cells[key]
@@ -150,7 +150,7 @@ local function visit_cell(position)
 	if cell[1] == 0 then
 		for _, vector in pairs(cell_adjacent_vectors) do
 			local adjacent_position = {x = position.x + vector[1], y = position.y + vector[2]}			
-			if Functions.is_minefield_tile(adjacent_position) then
+			if Functions.is_minefield_tile(adjacent_position, true) then
 				local adjacent_key = Functions.position_to_string(adjacent_position)
 				if not minesweeper.cells[adjacent_key] then minesweeper.cells[adjacent_key] = {} end
 				local adjacent_cell = minesweeper.cells[adjacent_key]
@@ -339,7 +339,7 @@ local function deny_building(event)
 	local entity = event.created_entity
 	if not entity.valid then return end
 	if entity.name == "entity-ghost" then return end
-	if Functions.is_minefield_tile(entity.position) then
+	if Functions.is_minefield_tile(entity.position, true) then
 		if event.player_index then
 			local player = game.players[event.player_index]
 			if entity.position.x % 2 == 1 and entity.position.y % 2 == 1 and entity.name == "stone-furnace" then
@@ -372,6 +372,8 @@ end
 local function on_player_respawned(event)
 	local player = game.players[event.player_index]
 	player.insert({name = "stone-furnace", count = 1})
+	
+	game.surfaces.nauvis.destroy_decoratives({name="nuclear-ground-patch"})
 end
 
 local function on_entity_died(event)
@@ -401,6 +403,7 @@ local function on_init()
 
 	local surface = game.surfaces[1]
 	local mgs = surface.map_gen_settings
+	mgs.water = 0
 	mgs.cliff_settings = {cliff_elevation_interval = 0, cliff_elevation_0 = 0}
 	mgs.autoplace_controls = {
 		["coal"] = {frequency = 0, size = 0, richness = 0},

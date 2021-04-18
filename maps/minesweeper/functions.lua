@@ -17,8 +17,20 @@ function Public.kaboom(position)
 	surface.create_entity({name = "atomic-rocket", position = {position.x + 1, position.y + 1}, target = {position.x + 1, position.y + 1}, speed = 1, force = "minesweeper"})
 end
 
-function Public.is_minefield_tile(position)
-	local tile = game.surfaces.nauvis.get_tile(position)	
+function Public.is_minefield_tile(position, search_cell)
+	if search_cell then
+		for x = 0, 1, 1 do
+			for y = 0, 1, 1 do
+				local p = {x = position.x + x, y = position.y + y}
+				local tile = game.surfaces.nauvis.get_tile(p)
+				if tile.name == "nuclear-ground" then return true end
+				if tile.hidden_tile == "nuclear-ground" then return true end
+			end
+		end
+		return
+	end	
+			
+	local tile = game.surfaces.nauvis.get_tile(position)
 	if tile.name == "nuclear-ground" then return true end
 	if tile.hidden_tile == "nuclear-ground" then return true end
 end
