@@ -21,14 +21,14 @@ Global.register(
 )
 
 local number_colors = {
-	[1] = {0, 0, 190},
-	[2] = {0, 125, 0},
+	[1] = {0, 0, 210},
+	[2] = {0, 100, 0},
 	[3] = {180, 0, 0},
-	[4] = {0, 0, 130},
-	[5] = {130, 0, 0},
-	[6] = {150, 0, 150},
+	[4] = {0, 0, 120},
+	[5] = {120, 0, 0},
+	[6] = {0, 110, 110},
 	[7] = {0, 0, 0},
-	[8] = {177, 177, 177},
+	[8] = {125, 125, 125},
 	[11] = {150, 0, 150},
 }
 
@@ -82,20 +82,22 @@ local function update_rendering(cell, position)
 		rendering.destroy(cell[2])
 	end
 	
+	local cell_value = cell[1]
+	
 	local color
-	if number_colors[cell[1]] then
-		color = number_colors[cell[1]]
+	if number_colors[cell_value] then
+		color = number_colors[cell_value]
 	else
 		color = {125, 125, 125}
 	end
 	
 	local text
-	if cell[1] == 11 then
+	if cell_value == 11 then
 		text = "X" 
 	else
-		text = cell[1]
+		text = cell_value
 	end
-	
+
 	cell[2] = rendering.draw_text{text=text, surface=game.surfaces[1], target={position.x + 0.55, position.y - 0.25}, color=color, scale=3, font="scenario-message-dialog", draw_on_ground=true, scale_with_zoom=false, only_in_alt_mode=false}
 end
 
@@ -124,6 +126,7 @@ local function visit_cell(position)
 	
 	local key = Functions.position_to_string(position)
 	local cell = minesweeper.cells[key]
+	local cell_value_before_visit = false
 	
 	if cell then
 		if cell[1] == 10 then
@@ -138,8 +141,11 @@ local function visit_cell(position)
 				end
 			end
 			return score_change
-		end		
+		end	
+		
 		if cell[1] == 11 then return score_change end
+		
+		cell_value_before_visit = cell[1]
 	end
 
 	if not cell then minesweeper.cells[key] = {} end
@@ -162,9 +168,21 @@ local function visit_cell(position)
 		end
 		Functions.uncover_terrain(position)
 		kill_cell(position)
-	else
-		update_rendering(cell, position)
+		return score_change
 	end
+	
+	if cell_value_before_visit and cell_value_before_visit ~= cell[1] then
+		for _, vector in pairs(cell_adjacent_vectors) do
+			local adjacent_position = {x = position.x + vector[1], y = position.y + vector[2]}					
+			local adjacent_key = Functions.position_to_string(adjacent_position)
+			local adjacent_cell = minesweeper.cells[adjacent_key]
+			if adjacent_cell and adjacent_cell[1] < 9 then
+				table.insert(minesweeper.visit_queue, {x = adjacent_position.x, y = adjacent_position.y})
+			end		
+		end
+	end
+			
+	update_rendering(cell, position)
 	
 	return score_change
 end
@@ -192,6 +210,7 @@ local function are_mines_marked_around_target(position)
 end
 
 local function solve_attempt(position)
+	local solved = false
 	for _, vector in pairs(get_solving_vectors(position)) do
 		local p = {x = position.x + vector[1], y = position.y + vector[2]}
 		local key = Functions.position_to_string(p)
@@ -199,6 +218,7 @@ local function solve_attempt(position)
 		if cell and cell[1] > 10 then
 			local marked_positions = are_mines_marked_around_target(p)
 			if marked_positions then
+				solved = true
 				for _, p in pairs(marked_positions) do
 					minesweeper.cells[Functions.position_to_string(p)][1] = -1
 					visit_cell(p)
@@ -207,9 +227,10 @@ local function solve_attempt(position)
 			end
 		end
 	end
+	return solved
 end
 
-local function mark_mine(entity)
+local function mark_mine(entity, player)
 	local position = Functions.position_to_cell_position(entity.position)
 	local key = Functions.position_to_string(position)
 	local cell = minesweeper.cells[key]
@@ -217,23 +238,30 @@ local function mark_mine(entity)
 	
 	--Success
 	if cell and cell[1] > 9 then
-		if cell[1] == 10 then score_change = 1 end
+		local surface = game.surfaces.nauvis
 		
-		entity.surface.create_entity({
+		if cell[1] == 10 then score_change = 1 end			
+		
+		surface.create_entity({
 			name = "flying-text",
 			position = entity.position,
 			text = "Mine marked.",
 			color = {r=0.98, g=0.66, b=0.22}
 		})
-				
-		cell[1] = 11
-		update_rendering(cell, position)
-		
-		entity.destroy()
-		game.surfaces.nauvis.spill_item_stack({position.x + 1, position.y + 1}, {name = 'stone-furnace', count = 1}, true)
 
-		solve_attempt(position)
-	
+		cell[1] = 11
+		update_rendering(cell, position)		
+		entity.destroy()
+		
+		local solved = solve_attempt(position)	
+		if solved then
+			player.insert({name = "stone-furnace", count = 1})
+			return score_change
+		end
+		
+		local e = surface.create_entity({name = 'item-on-ground', position = {position.x + 1, position.y + 1}, stack = {name = "stone-furnace", count = 1}})
+		if e and e.valid then e.to_be_looted = true end
+		
 		return score_change
 	end
 	
@@ -247,13 +275,6 @@ local function mark_mine(entity)
 			minesweeper.cells[key][1] = -1
 			solve_attempt(p)
 			table.insert(minesweeper.visit_queue, {x = p.x, y = p.y})
-		end
-	end
-	for _, vector in pairs(cell_update_vectors) do
-		local p = {x = position.x + vector[1], y = position.y + vector[2]}
-		local key = Functions.position_to_string(p)
-		if minesweeper.cells[key] then
-			visit_cell(p)
 		end
 	end
 	return score_change
@@ -343,7 +364,7 @@ local function deny_building(event)
 		if event.player_index then
 			local player = game.players[event.player_index]
 			if entity.position.x % 2 == 1 and entity.position.y % 2 == 1 and entity.name == "stone-furnace" then
-				local score_change = mark_mine(entity)
+				local score_change = mark_mine(entity, player)
 				Map_score.set_score(player, Map_score.get_score(player) + score_change)
 				return
 			end	
