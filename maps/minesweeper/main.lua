@@ -29,7 +29,7 @@ local number_colors = {
 	[6] = {0, 110, 110},
 	[7] = {0, 0, 0},
 	[8] = {125, 125, 125},
-	[11] = {150, 0, 150},
+	[11] = {185, 0, 255},
 }
 
 local chunk_divide_vectors = {}
@@ -91,14 +91,13 @@ local function update_rendering(cell, position)
 		color = {125, 125, 125}
 	end
 	
-	local text
+	local p = {position.x + 0.6, position.y - 0.20}
 	if cell_value == 11 then
-		text = "X" 
+		--cell[2] = rendering.draw_text{text="x", surface=game.surfaces[1], target={position.x + 0.68, position.y - 0.32}, color=color, scale=3, font="scenario-message-dialog", draw_on_ground=true, scale_with_zoom=false, only_in_alt_mode=false}
+		cell[2] = rendering.draw_text{text="X", surface=game.surfaces[1], target=p, color=color, scale=3, font="scenario-message-dialog", draw_on_ground=true, scale_with_zoom=false, only_in_alt_mode=false}
 	else
-		text = cell_value
+		cell[2] = rendering.draw_text{text=cell_value, surface=game.surfaces[1], target=p, color=color, scale=3, font="scenario-message-dialog", draw_on_ground=true, scale_with_zoom=false, only_in_alt_mode=false}
 	end
-
-	cell[2] = rendering.draw_text{text=text, surface=game.surfaces[1], target={position.x + 0.55, position.y - 0.25}, color=color, scale=3, font="scenario-message-dialog", draw_on_ground=true, scale_with_zoom=false, only_in_alt_mode=false}
 end
 
 local function get_adjacent_mine_count(position)

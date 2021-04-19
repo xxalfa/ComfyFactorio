@@ -47,7 +47,6 @@ function Public.position_to_cell_position(p)
 end
 
 function Public.get_terrain_tile(surface, position)
-	local tile_name
 	local seed = surface.map_gen_settings.seed
 	
 	local noise_1 = Get_noise("smol_areas", position, seed)
