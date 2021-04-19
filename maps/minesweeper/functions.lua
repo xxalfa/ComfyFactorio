@@ -118,6 +118,8 @@ function Public.uncover_terrain(position)
 			local p = {x = position.x + x, y = position.y + y}
 			local tile_name = Public.get_terrain_tile(surface, p)
 			surface.set_tiles({{name = tile_name, position = p}}, true)
+			surface.set_tiles({{name = "concrete", position = p}}, true)
+			surface.set_tiles({{name = tile_name, position = p}}, true)
 			if math.random(1, 16) == 1 and tile_name == "water-shallow" then
 				surface.create_entity({name = "fish", position = p})
 			end
