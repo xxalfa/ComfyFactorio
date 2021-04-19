@@ -32,6 +32,20 @@ local number_colors = {
 	[11] = {185, 0, 255},
 }
 
+local rendering_tile_values = {
+	["nuclear-ground"] = {offset = {0.6, -0.2}, zoom = 3, font = "scenario-message-dialog"},	
+
+	["stone-path"] = {offset = {0.54, -0.27}, zoom = 3, font = "default-large"},
+	
+	["concrete"] = {offset = {0.52, -0.28}, zoom = 3, font = "default-large-bold"},
+	["hazard-concrete-left"] = {offset = {0.52, -0.28}, zoom = 3, font = "default-large-bold"},
+	["hazard-concrete-right"] = {offset = {0.52, -0.28}, zoom = 3, font = "default-large-bold"},
+	
+	["refined-concrete"] = {offset = {0.54, -0.26}, zoom = 3, font = "default-game"},
+	["refined-hazard-concrete-left"] = {offset = {0.54, -0.26}, zoom = 3, font = "default-game"},
+	["refined-hazard-concrete-right"] = {offset = {0.54, -0.26}, zoom = 3, font = "default-game"},
+}
+
 local chunk_divide_vectors = {}
 for x = 0, 30, 2 do
 	for y = 0, 30, 2 do
@@ -78,6 +92,11 @@ end
 local size_of_solving_vector_tables = #solving_vector_tables
 
 local function update_rendering(cell, position)
+	local tile = game.surfaces.nauvis.get_tile(position)
+	local tile_values = rendering_tile_values[tile.name]
+	if not tile_values then tile_values = {offset = {0.6, -0.2}, zoom = 3, font = "scenario-message-dialog"} end
+
+	
 	if cell[2] then
 		rendering.destroy(cell[2])
 	end
@@ -91,13 +110,13 @@ local function update_rendering(cell, position)
 		color = {125, 125, 125}
 	end
 	
-	local p = {position.x + 0.6, position.y - 0.20}
+	local p = {position.x + tile_values.offset[1], position.y + tile_values.offset[2]}
+	local text = cell_value
 	if cell_value == 11 then
-		--cell[2] = rendering.draw_text{text="x", surface=game.surfaces[1], target={position.x + 0.68, position.y - 0.32}, color=color, scale=3, font="scenario-message-dialog", draw_on_ground=true, scale_with_zoom=false, only_in_alt_mode=false}
-		cell[2] = rendering.draw_text{text="X", surface=game.surfaces[1], target=p, color=color, scale=3, font="scenario-message-dialog", draw_on_ground=true, scale_with_zoom=false, only_in_alt_mode=false}
-	else
-		cell[2] = rendering.draw_text{text=cell_value, surface=game.surfaces[1], target=p, color=color, scale=3, font="scenario-message-dialog", draw_on_ground=true, scale_with_zoom=false, only_in_alt_mode=false}
+		text = "X"
 	end
+	
+	cell[2] = rendering.draw_text{text=text, surface=game.surfaces[1], target=p, color=color, scale=tile_values.zoom, font=tile_values.font, draw_on_ground=true, scale_with_zoom=false, only_in_alt_mode=false}
 end
 
 local function get_adjacent_mine_count(position)
@@ -384,6 +403,25 @@ local function on_robot_built_entity(event)
 	deny_building(event)
 end
 
+local function update_built_tiles(surface, tiles)
+	for _, placed_tile in pairs(tiles) do
+		local cell_position = Functions.position_to_cell_position(placed_tile.position)
+		local key = Functions.position_to_string(cell_position)
+		local cell = minesweeper.cells[key]
+		if cell and cell[1] ~= 10 then
+			update_rendering(cell, cell_position)
+		end
+	end		
+end
+
+local function on_player_built_tile(event)
+	update_built_tiles(game.surfaces[event.surface_index], event.tiles)
+end
+
+local function on_robot_built_tile(event)
+	update_built_tiles(event.robot.surface, event.tiles)
+end
+
 local function on_player_created(event)
 	local player = game.players[event.player_index]
 	player.insert({name = "stone-furnace", count = 1})
@@ -461,7 +499,10 @@ local function on_init()
 		
 		"As you move away from spawn,\n",
 		"mine density and radius required to disarm will increase.\n",
-		"Crates will contain more loot and ore will have higher yield.\n",		
+		"Crates will contain more loot and ore will have higher yield.\n\n",
+		
+		"The paint for the numerics does not work very well with the dirt.\n",
+		"Laying some stone bricks or better may help.\n",
 	})
 	T.main_caption_color = {r = 255, g = 125, b = 55}
 	T.sub_caption_color = {r = 0, g = 250, b = 150}
@@ -477,3 +518,5 @@ Event.add(defines.events.on_entity_died, on_entity_died)
 Event.add(defines.events.on_robot_built_entity, on_robot_built_entity)
 Event.add(defines.events.on_player_created, on_player_created)
 Event.add(defines.events.on_player_respawned, on_player_respawned)
+Event.add(defines.events.on_robot_built_tile, on_robot_built_tile)
+Event.add(defines.events.on_player_built_tile, on_player_built_tile)
