@@ -1,8 +1,12 @@
 --[[
 It's a Minesweeper thingy - MewMew
--- 1 to 9 = adjacent mines
--- 10 = mine
--- 11 = marked mine
+
+Cell Values:
+	-- 1 to 8 = adjacent mines
+	-- 9 = empty cell with grid
+	-- 10 = mine
+	-- 11 = marked mine
+	
 ]]--
 
 require 'modules.satellite_score'
