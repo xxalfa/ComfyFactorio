@@ -2,6 +2,8 @@ local Public = {}
 local LootRaffle = require "functions.loot_raffle"
 local Get_noise = require "utils.get_noise"
 
+local safe_zone_radius = 16
+
 local ores = {}
 ores[1] = {}
 ores[2] = {}
@@ -51,6 +53,18 @@ function Public.is_minefield_tile(position, search_cell)
 	if tile.hidden_tile == "nuclear-ground" then return true end
 end
 
+function Public.is_spawn(position)
+	if math.abs(position.x) > safe_zone_radius then return false end
+	if math.abs(position.y) > safe_zone_radius then return false end
+	local p = {x = position.x, y = position.y}
+	if p.x > 0 then p.x = p.x + 1 end
+	if p.y > 0 then p.y = p.y + 1 end
+	local d = math.sqrt(p.x ^ 2 + p.y ^ 2)
+	if d < safe_zone_radius then
+		return true
+	end	
+end
+
 function Public.position_to_string(p)
 	return p.x .. "_" .. p.y
 end
@@ -63,6 +77,8 @@ function Public.position_to_cell_position(p)
 end
 
 function Public.get_terrain_tile(surface, position)
+	if Public.is_spawn(position) then	return 'black-refined-concrete' end
+
 	local seed = surface.map_gen_settings.seed
 
 	local noise_1 = Get_noise("smol_areas", position, seed)
@@ -123,7 +139,7 @@ function Public.disarm_reward(position)
 			local p = {x = position.x + x, y = position.y + y}
 			local tile_name = Public.get_terrain_tile(surface, p)
 			if tile_name ~= "water-shallow" then
-				surface.create_entity({name = ore, position = p, amount = 1000 + distance_to_center * 2})
+				surface.create_entity({name = ore, position = p, amount = 1000 + distance_to_center * 3})
 			end
 		end
 	end

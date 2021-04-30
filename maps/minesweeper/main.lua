@@ -352,8 +352,7 @@ local function mark_mine(entity, player)
     return score_change
 end
 
-local function add_mines_to_chunk(left_top)
-    local distance_to_center = math.sqrt((left_top.x + 16) ^ 2 + (left_top.y + 16) ^ 2)
+local function add_mines_to_chunk(left_top, distance_to_center)    
     local base_mine_count = 40
     local max_mine_count = 128
     local mine_count = distance_to_center * 0.043 + base_mine_count
@@ -367,14 +366,26 @@ local function add_mines_to_chunk(left_top)
     end
     table.shuffle_table(shuffle_index)
 
-    -- place shuffled mines
-    for i = 1, mine_count, 1 do
-        local vector = chunk_divide_vectors[shuffle_index[i]]
-        local position = {x = left_top.x + vector[1], y = left_top.y + vector[2]}
-        local key = Functions.position_to_string(position)
-        minesweeper.cells[key] = {10}
-        minesweeper.active_mines = minesweeper.active_mines + 1
-    end
+	-- place shuffled mines
+	if distance_to_center < 128 then
+		for i = 1, mine_count, 1 do
+			local vector = chunk_divide_vectors[shuffle_index[i]]
+			local position = {x = left_top.x + vector[1], y = left_top.y + vector[2]}			
+			if not Functions.is_spawn(position) then
+				local key = Functions.position_to_string(position)
+				minesweeper.cells[key] = {10}
+				minesweeper.active_mines = minesweeper.active_mines + 1
+			end
+		end
+	else
+		for i = 1, mine_count, 1 do
+			local vector = chunk_divide_vectors[shuffle_index[i]]
+			local position = {x = left_top.x + vector[1], y = left_top.y + vector[2]}
+			local key = Functions.position_to_string(position)
+			minesweeper.cells[key] = {10}
+			minesweeper.active_mines = minesweeper.active_mines + 1
+		end
+	end
 
     -- remove mines that would form a 3x3 block
     for _, chunk_vector in pairs(chunk_vectors) do
@@ -404,18 +415,35 @@ end
 
 local function on_chunk_generated(event)
     local left_top = event.area.left_top
-    if event.surface.index ~= 1 then
+	local surface = event.surface
+    if surface.index ~= 1 then
         return
     end
 
-    local tiles = {}
-    for x = 0, 31, 1 do
-        for y = 0, 31, 1 do
-            table.insert(tiles, {name = 'nuclear-ground', position = {x = left_top.x + x, y = left_top.y + y}})
-            --table.insert(tiles, {name = Functions.get_terrain_tile(event.surface, {x = left_top.x + x, y = left_top.y + y}), position = {x = left_top.x + x, y = left_top.y + y}})
-        end
-    end
-    event.surface.set_tiles(tiles, true)
+	local distance_to_center = math.sqrt((left_top.x + 16) ^ 2 + (left_top.y + 16) ^ 2)
+	local tiles = {}
+	
+	if distance_to_center < 128 then
+		for x = 0, 31, 1 do
+			for y = 0, 31, 1 do
+				local position = {x = left_top.x + x, y = left_top.y + y}			
+				if Functions.is_spawn(position) then
+					table.insert(tiles, {name = Functions.get_terrain_tile(surface, position), position = position})		
+				else
+					table.insert(tiles, {name = 'nuclear-ground', position = position})
+				end
+			end
+		end
+	else
+		for x = 0, 31, 1 do
+			for y = 0, 31, 1 do
+				local position = {x = left_top.x + x, y = left_top.y + y}
+				table.insert(tiles, {name = 'nuclear-ground', position = position})
+				--table.insert(tiles, {name = Functions.get_terrain_tile(surface, position), position = position})
+			end
+		end
+	end	
+    surface.set_tiles(tiles, true)
 
     --surface.clear() will cause to trigger on_chunk_generated twice
     local key = Functions.position_to_string(left_top)
@@ -424,7 +452,7 @@ local function on_chunk_generated(event)
     end
     minesweeper.chunks[key] = true
 
-    add_mines_to_chunk(left_top)
+    add_mines_to_chunk(left_top, distance_to_center)
 end
 
 local function on_player_changed_position(event)
