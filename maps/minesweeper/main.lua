@@ -196,6 +196,7 @@ local function visit_cell(position)
         end
 
         if cell[1] == 11 then
+			update_rendering(cell, position)
             return score_change
         end
 
@@ -504,12 +505,12 @@ local function update_built_tiles(surface, tiles)
     for _, placed_tile in pairs(tiles) do
         local cell_position = Functions.position_to_cell_position(placed_tile.position)
         local key = Functions.position_to_string(cell_position)
-        local cell = minesweeper.cells[key]		
+        local cell = minesweeper.cells[key]
 		if not cell and Functions.is_minefield_tile(placed_tile.position) then
 			minesweeper.cells[key] = {9}
-		end	
+		end
 		local cell = minesweeper.cells[key]
-        update_rendering(cell, cell_position)
+		if cell then update_rendering(cell, cell_position) end
     end
 end
 
@@ -518,6 +519,14 @@ local function on_player_built_tile(event)
 end
 
 local function on_robot_built_tile(event)
+    update_built_tiles(event.robot.surface, event.tiles)
+end
+
+local function on_player_mined_tile(event)
+    update_built_tiles(game.surfaces[event.surface_index], event.tiles)
+end
+
+local function on_robot_mined_tile(event)
     update_built_tiles(event.robot.surface, event.tiles)
 end
 
@@ -627,3 +636,5 @@ Event.add(defines.events.on_player_created, on_player_created)
 Event.add(defines.events.on_player_respawned, on_player_respawned)
 Event.add(defines.events.on_robot_built_tile, on_robot_built_tile)
 Event.add(defines.events.on_player_built_tile, on_player_built_tile)
+Event.add(defines.events.on_robot_mined_tile, on_robot_mined_tile)
+Event.add(defines.events.on_player_mined_tile, on_player_mined_tile)
