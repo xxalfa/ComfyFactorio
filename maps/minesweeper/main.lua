@@ -473,24 +473,23 @@ local function deny_building(event)
     if not entity.valid then
         return
     end
-    if entity.name == 'entity-ghost' then
-        return
-    end
-    if Functions.is_minefield_tile(entity.position, true) then
-        if event.player_index then
-            local player = game.players[event.player_index]
-            if entity.position.x % 2 == 1 and entity.position.y % 2 == 1 and entity.name == 'stone-furnace' then
-                local score_change = mark_mine(entity, player)
-                Map_score.set_score(player, Map_score.get_score(player) + score_change)
-                return
-            end
-            player.insert({name = entity.name, count = 1})
-        else
-            local inventory = event.robot.get_inventory(defines.inventory.robot_cargo)
-            inventory.insert({name = entity.name, count = 1})
-        end
-        entity.destroy()
-    end
+
+	if not game.item_prototypes[entity.name] then return end
+    if not Functions.is_minefield_tile(entity.position, true) then return end
+	
+	if event.player_index then
+		local player = game.players[event.player_index]
+		if entity.position.x % 2 == 1 and entity.position.y % 2 == 1 and entity.name == 'stone-furnace' then
+			local score_change = mark_mine(entity, player)
+			Map_score.set_score(player, Map_score.get_score(player) + score_change)
+			return
+		end
+		player.insert({name = entity.name, count = 1})
+	else
+		local inventory = event.robot.get_inventory(defines.inventory.robot_cargo)
+		inventory.insert({name = entity.name, count = 1})
+	end
+	entity.destroy() 
 end
 
 local function on_built_entity(event)
