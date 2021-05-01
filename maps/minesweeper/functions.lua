@@ -31,6 +31,8 @@ end
 
 function Public.kaboom(position)
 	local surface = game.surfaces[1]
+	local count = surface.count_entities_filtered({name = {"atomic-bomb-ground-zero-projectile", "atomic-bomb-wave", "atomic-bomb-wave-spawns-cluster-nuke-explosion", "atomic-bomb-wave-spawns-fire-smoke-explosion","atomic-bomb-wave-spawns-nuclear-smoke", "atomic-bomb-wave-spawns-nuke-shockwave-explosion", "atomic-rocket"}, area = {{position.x - 4, position.y - 4}, {position.x + 4, position.y + 4}}, limit = 1})
+	if count > 0 then return end	
 	surface.create_entity({name = "atomic-rocket", position = {position.x + 1, position.y + 1}, target = {position.x + 1, position.y + 1}, speed = 1, force = "minesweeper"})
 end
 
