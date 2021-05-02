@@ -1,7 +1,6 @@
 --choppy-- mewmew made this --
 --neko barons attempt to mix up map gen--
 
-require 'modules.dynamic_landfill'
 require 'modules.satellite_score'
 require 'modules.spawners_contain_biters'
 require 'functions.create_entity_chain'
@@ -10,7 +9,6 @@ require 'tools.map_functions'
 
 require 'modules.surrounded_by_worms'
 require 'modules.biter_noms_you'
---require "maps.choppy_map_intro"
 
 local Map = require 'modules.map_info'
 local unearthing_worm = require 'functions.unearthing_worm'
@@ -418,6 +416,8 @@ local function on_player_joined_game(event)
     global.average_worm_amount_per_chunk = 2
     global.worm_distance = surface.map_gen_settings.starting_area * 300
     game.forces.player.technologies["landfill"].enabled = false
+    game.forces.player.technologies["spidertron"].enabled = false
+    
 
     if global.choppy_nightmare then
         surface.daytime = 0.5

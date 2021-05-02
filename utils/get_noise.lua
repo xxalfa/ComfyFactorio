@@ -47,7 +47,8 @@ local noises = {
     ['n1'] = {{modifier = 0.0001, weight = 1}},
     ['n2'] = {{modifier = 0.001, weight = 1}},
     ['n3'] = {{modifier = 0.01, weight = 1}},
-    ['n4'] = {{modifier = 0.1, weight = 1}},
+	['n4'] = {{modifier = 0.1, weight = 1}},
+    ['n5'] = {{modifier = 0.07, weight = 1}},
     ['watery_world'] = {
         {modifier = 0.0007, weight = 1},
         {modifier = 0.01, weight = 0.02},
@@ -72,6 +73,11 @@ local noises = {
         {modifier = 0.05, weight = 0.23},
         {modifier = 0.1, weight = 0.11}
     },
+	['big_cave'] = {
+        {modifier = 0.003, weight = 1},
+        {modifier = 0.02, weight = 0.05},
+        {modifier = 0.15, weight = 0.02}
+    },
     ['small_caves'] = {
         {modifier = 0.008, weight = 1},
         {modifier = 0.03, weight = 0.15},
@@ -92,7 +98,24 @@ local noises = {
         {modifier = 0.01, weight = 1},
         {modifier = 0.05, weight = 0.5},
         {modifier = 0.1, weight = 0.025}
-    }
+    },
+	['cave_miner_01'] = {
+        {modifier = 0.0015, weight = 1},
+		{modifier = 0.0030, weight = 0.15},
+        {modifier = 0.0100, weight = 0.025},
+        {modifier = 0.1000, weight = 0.01}
+    },
+	['cave_miner_02'] = {
+        {modifier = 0.006, weight = 1},
+        {modifier = 0.02, weight = 0.15},
+        {modifier = 0.25, weight = 0.025}
+    },
+	['cm_ponds'] = {{modifier = 0.025, weight = 1}, {modifier = 0.05, weight = 0.25}, {modifier = 0.1, weight = 0.05}},
+	['cm_ocean'] = {
+		{modifier = 0.002, weight = 1},
+		{modifier = 0.004, weight = 1},
+		{modifier = 0.02, weight = 0.05},
+    },
 }
 
 --returns a float number between -1 and 1

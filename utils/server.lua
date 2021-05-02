@@ -16,19 +16,29 @@ local serialize_options = {sparse = true, compact = true}
 local Public = {}
 
 local server_time = {secs = nil, tick = 0}
+local server_ups = {ups = 60}
+local start_data = {server_id = nil, server_name = nil, start_time = nil}
 local requests = {}
 
 Global.register(
     {
         server_time = server_time,
+        server_ups = server_ups,
+        start_data = start_data,
         requests = requests
     },
     function(tbl)
         server_time = tbl.server_time
+        server_ups = tbl.server_ups
+        start_data = tbl.start_data
         requests = tbl.requests
     end
 )
 
+--- Jail dataset.
+local jailed_data_set = 'jailed'
+
+--- Web panel framework.
 local discord_tag = '[DISCORD]'
 local discord_raw_tag = '[DISCORD-RAW]'
 local discord_bold_tag = '[DISCORD-BOLD]'
@@ -40,6 +50,11 @@ local discord_embed_tag = '[DISCORD-EMBED]'
 local discord_embed_raw_tag = '[DISCORD-EMBED-RAW]'
 local discord_admin_embed_tag = '[DISCORD-ADMIN-EMBED]'
 local discord_admin_embed_raw_tag = '[DISCORD-ADMIN-EMBED-RAW]'
+local discord_named_tag = '[DISCORD-NAMED]'
+local discord_named_raw_tag = '[DISCORD-NAMED-RAW]'
+local discord_named_bold_tag = '[DISCORD-NAMED-BOLD]'
+local discord_named_embed_tag = '[DISCORD-NAMED-EMBED]'
+local discord_named_embed_raw_tag = '[DISCORD-NAMED-EMBED-RAW]'
 local start_scenario_tag = '[START-SCENARIO]'
 local stop_scenario_tag = '[STOP-SCENARIO]'
 local ping_tag = '[PING]'
@@ -56,6 +71,20 @@ local player_leave_tag = '[PLAYER-LEAVE]'
 Public.raw_print = raw_print
 
 local data_set_handlers = {}
+
+local function assert_non_empty_string_and_no_spaces(str, argument_name)
+    if type(str) ~= 'string' then
+        error(argument_name .. ' must be a string', 3)
+    end
+
+    if #str == 0 then
+        error(argument_name .. ' must not be an empty string', 3)
+    end
+
+    if str:match(' ') then
+        error(argument_name .. " must not contain space ' ' character.", 3)
+    end
+end
 
 --- The event id for the on_server_started event.
 -- The event is raised whenever the server goes from the starting state to the running state.
@@ -76,68 +105,158 @@ Public.events = {on_server_started = Event.generate_event_name('on_server_starte
 -- @usage
 -- local Server = require 'utils.server'
 -- Server.to_discord('Hello from scenario script!')
-function Public.to_discord(message)
-    raw_print(discord_tag .. message)
+-- @param  locale<boolean> if the message should be handled as localized.
+function Public.to_discord(message, locale)
+    if locale then
+        print(message, discord_tag)
+    else
+        raw_print(discord_tag .. message)
+    end
 end
 
 --- Sends a message to the linked discord channel. The message is not sanitized of markdown.
 -- @param  message<string> message to send.
-function Public.to_discord_raw(message)
-    raw_print(discord_raw_tag .. message)
+-- @param  locale<boolean> if the message should be handled as localized.
+function Public.to_discord_raw(message, locale)
+    if locale then
+        print(message, discord_raw_tag)
+    else
+        raw_print(discord_raw_tag .. message)
+    end
 end
 
 --- Sends a message to the linked discord channel. The message is sanitized of markdown server side, then made bold.
 -- @param  message<string> message to send.
-function Public.to_discord_bold(message)
-    raw_print(discord_bold_tag .. message)
+-- @param  locale<boolean> if the message should be handled as localized.
+function Public.to_discord_bold(message, locale)
+    if locale then
+        print(message, discord_bold_tag)
+    else
+        raw_print(discord_bold_tag .. message)
+    end
+end
+
+--- Sends a message to the named discord channel. The message is sanitized of markdown server side.
+-- @param  message<string> message to send.
+function Public.to_discord_named(channel_name, message)
+    assert_non_empty_string_and_no_spaces(channel_name, 'channel_name')
+    raw_print(concat({discord_named_tag, channel_name, ' ', message}))
+end
+
+--- Sends a message to the named discord channel. The message is not sanitized of markdown.
+-- @param  message<string> message to send.
+function Public.to_discord_named_raw(channel_name, message)
+    assert_non_empty_string_and_no_spaces(channel_name, 'channel_name')
+    raw_print(concat({discord_named_raw_tag, channel_name, ' ', message}))
+end
+
+--- Sends a message to the named discord channel. The message is sanitized of markdown server side, then made bold.
+-- @param  message<string> message to send.
+function Public.to_discord_named_bold(channel_name, message)
+    assert_non_empty_string_and_no_spaces(channel_name, 'channel_name')
+    raw_print(concat({discord_named_bold_tag, channel_name, ' ', message}))
+end
+
+--- Sends an embed message to the named discord channel. The message is sanitized of markdown server side.
+-- @param  message<string> the content of the embed.
+function Public.to_discord_named_embed(channel_name, message)
+    assert_non_empty_string_and_no_spaces(channel_name, 'channel_name')
+    raw_print(concat({discord_named_embed_tag, channel_name, ' ', message}))
+end
+
+--- Sends an embed message to the named discord channel. The message is not sanitized of markdown.
+-- @param  message<string> the content of the embed.
+function Public.to_discord_named_embed_raw(channel_name, message)
+    assert_non_empty_string_and_no_spaces(channel_name, 'channel_name')
+    raw_print(concat({discord_named_embed_raw_tag, channel_name, ' ', message}))
 end
 
 --- Sends a message to the linked admin discord channel. The message is sanitized of markdown server side.
 -- @param  message<string> message to send.
-function Public.to_admin(message)
-    raw_print(discord_admin_tag .. message)
+-- @param  locale<boolean> if the message should be handled as localized.
+function Public.to_admin(message, locale)
+    if locale then
+        print(message, discord_admin_tag)
+    else
+        raw_print(discord_admin_tag .. message)
+    end
 end
 
 --- Sends a message to the linked banend discord channel. The message is sanitized of markdown server side.
 -- @param  message<string> message to send.
-function Public.to_banned(message)
-    raw_print(discord_banned_tag .. message)
+-- @param  locale<boolean> if the message should be handled as localized.
+function Public.to_banned(message, locale)
+    if locale then
+        print(message, discord_banned_tag)
+    else
+        raw_print(discord_banned_tag .. message)
+    end
 end
 
 --- Sends a message to the linked admin discord channel. The message is not sanitized of markdown.
 -- @param  message<string> message to send.
-function Public.to_admin_raw(message)
-    raw_print(discord_admin_raw_tag .. message)
+-- @param  locale<boolean> if the message should be handled as localized.
+function Public.to_admin_raw(message, locale)
+    if locale then
+        print(message, discord_admin_raw_tag)
+    else
+        raw_print(discord_admin_raw_tag .. message)
+    end
 end
 
 --- Sends a embed message to the linked discord channel. The message is sanitized of markdown server side.
 -- @param  message<string> the content of the embed.
-function Public.to_discord_embed(message)
-    raw_print(discord_embed_tag .. message)
+-- @param  locale<boolean> if the message should be handled as localized.
+function Public.to_discord_embed(message, locale)
+    if locale then
+        print(message, discord_embed_tag)
+    else
+        raw_print(discord_embed_tag .. message)
+    end
 end
 
 --- Sends a embed message to the linked discord channel. The message is not sanitized of markdown.
 -- @param  message<string> the content of the embed.
-function Public.to_discord_embed_raw(message)
-    raw_print(discord_embed_raw_tag .. message)
+-- @param  locale<boolean> if the message should be handled as localized.
+function Public.to_discord_embed_raw(message, locale)
+    if locale then
+        print(message, discord_embed_raw_tag)
+    else
+        raw_print(discord_embed_raw_tag .. message)
+    end
 end
 
 --- Sends a embed message to the linked admin discord channel. The message is sanitized of markdown server side.
 -- @param  message<string> the content of the embed.
-function Public.to_admin_embed(message)
-    raw_print(discord_admin_embed_tag .. message)
+-- @param  locale<boolean> if the message should be handled as localized.
+function Public.to_admin_embed(message, locale)
+    if locale then
+        print(message, discord_admin_embed_tag)
+    else
+        raw_print(discord_admin_embed_tag .. message)
+    end
 end
 
 --- Sends a embed message to the linked banned discord channel. The message is sanitized of markdown server side.
 -- @param  message<string> the content of the embed.
-function Public.to_banned_embed(message)
-    raw_print(discord_banned_embed_tag .. message)
+-- @param  locale<boolean> if the message should be handled as localized.
+function Public.to_banned_embed(message, locale)
+    if locale then
+        print(message, discord_banned_embed_tag)
+    else
+        raw_print(discord_banned_embed_tag .. message)
+    end
 end
 
 --- Sends a embed message to the linked admin discord channel. The message is not sanitized of markdown.
 -- @param  message<string> the content of the embed.
-function Public.to_admin_embed_raw(message)
-    raw_print(discord_admin_embed_raw_tag .. message)
+-- @param  locale<boolean> if the message should be handled as localized.
+function Public.to_admin_embed_raw(message, locale)
+    if locale then
+        print(message, discord_admin_embed_raw_tag)
+    else
+        raw_print(discord_admin_embed_raw_tag .. message)
+    end
 end
 
 --- Stops and saves the factorio server and starts the named scenario.
@@ -434,11 +553,7 @@ function Public.try_get_data_timeout(data_set, key, callback_token, timeout_tick
 
     try_get_data_cancelable(data_set, key, callback_token)
 
-    Task.set_timeout_in_ticks(
-        timeout_ticks,
-        timeout_token,
-        {data_set = data_set, key = key, callback_token = callback_token}
-    )
+    Task.set_timeout_in_ticks(timeout_ticks, timeout_token, {data_set = data_set, key = key, callback_token = callback_token})
 end
 
 --- Gets all the data for the data_set from the web server's persistent data storage.
@@ -566,6 +681,72 @@ local function escape(str)
     return str:gsub('\\', '\\\\'):gsub('"', '\\"')
 end
 
+local statistics = {
+    'item_production_statistics',
+    'fluid_production_statistics',
+    'kill_count_statistics',
+    'entity_build_count_statistics'
+}
+function Public.export_stats()
+    local table_to_json = game.table_to_json
+    local stats = {
+        game_tick = game.tick,
+        player_count = #game.connected_players,
+        game_flow_statistics = {
+            pollution_statistics = {
+                input = game.pollution_statistics.input_counts,
+                output = game.pollution_statistics.output_counts
+            }
+        },
+        rockets_launched = {},
+        force_flow_statistics = {}
+    }
+    for _, force in pairs(game.forces) do
+        local flow_statistics = {}
+        for _, statName in pairs(statistics) do
+            flow_statistics[statName] = {
+                input = force[statName].input_counts,
+                output = force[statName].output_counts
+            }
+        end
+        stats.rockets_launched[force.name] = force.rockets_launched
+
+        stats.force_flow_statistics[force.name] = flow_statistics
+    end
+    rcon.print(table_to_json(stats))
+end
+
+--- Called by the web server to set the server start data.
+function Public.set_start_data(data)
+    start_data.server_id = data.server_id
+    start_data.server_name = data.server_name
+
+    local start_time = start_data.start_time
+    if not start_time then
+        -- Only set start time if it has not been set already, so that we keep the first start time.
+        start_data.start_time = data.start_time
+    end
+end
+
+-- This is the current server's id, in the case the save has been loaded on multiple servers.
+-- @return string
+function Public.get_server_id()
+    return start_data.server_id or ''
+end
+
+--- Gets the server's name. Empty string if not known.
+-- This is the current server's name, in the case the save has been loaded on multiple servers.
+-- @return string
+function Public.get_server_name()
+    return start_data.server_name or ''
+end
+
+--- Gets the server's start time as a unix epoch timestamp. nil if not known.
+-- @return number?
+function Public.get_start_time()
+    return start_data.start_time
+end
+
 --- If the player exists bans the player.
 -- Regardless of whether or not the player exists the name is synchronized with other servers
 -- and stored in the database.
@@ -663,6 +844,19 @@ function Public.get_time_data_raw()
     return server_time
 end
 
+--- Called by the web server to set the ups value.
+-- @param  tick<number> tick
+function Public.set_ups(tick)
+    server_ups.ups = tick
+end
+
+--- Gets a the estimated UPS from the web panel that is sent to the server.
+-- This is calculated and measured in the wrapper.
+-- @return number
+function Public.get_ups()
+    return server_ups.ups
+end
+
 --- Gets an estimate of the current server time as a unix epoch timestamp.
 -- If the server time has not been set returns nil.
 -- The estimate may be slightly off if within the last minute the game has been paused, saving or overwise,
@@ -746,7 +940,7 @@ Event.add(
     defines.events.on_player_joined_game,
     function(event)
         local player = Game.get_player_by_index(event.player_index)
-        if not player then
+        if not player or not player.valid then
             return
         end
 
@@ -758,11 +952,47 @@ Event.add(
     defines.events.on_player_left_game,
     function(event)
         local player = Game.get_player_by_index(event.player_index)
-        if not player then
+        if not player or not player.valid then
             return
         end
 
         raw_print(player_leave_tag .. player.name)
+    end
+)
+
+Event.add(
+    defines.events.on_console_command,
+    function(event)
+        local cmd = event.command
+        if not event.player_index then
+            return
+        end
+        local player = game.players[event.player_index]
+        local reason = event.parameters
+        if not reason then
+            return
+        end
+        if not player.admin then
+            return
+        end
+        if cmd == 'ban' then
+            Public.set_data(jailed_data_set, player.name, nil) -- this is added here since we don't want to clutter the jail dataset.
+            if player then
+                Public.to_banned_embed(table.concat {player.name .. ' banned ' .. reason})
+                return
+            else
+                Public.to_banned_embed(table.concat {'Server banned ' .. reason})
+                return
+            end
+        elseif cmd == 'unban' then
+            if player then
+                Public.to_banned_embed(table.concat {player.name .. ' unbanned ' .. reason})
+                return
+            else
+                Public.to_banned_embed(table.concat {'Server unbanned ' .. reason})
+                return
+            end
+        end
     end
 )
 

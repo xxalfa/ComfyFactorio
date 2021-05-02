@@ -157,7 +157,6 @@ local function send_poll_result_to_discord(poll)
 end
 
 local function redraw_poll_viewer_content(data)
-    local trusted = session.get_trusted_table()
     local poll_viewer_content = data.poll_viewer_content
     local remaining_time_label = data.remaining_time_label
     local poll_index = data.poll_index
@@ -396,8 +395,7 @@ local function draw_main_frame(left, player)
     right_flow.style.horizontal_align = 'right'
 
     if (trusted[player.name] or player.admin) or global.comfy_panel_config.poll_trusted == false then
-        local create_poll_button =
-            right_flow.add {type = 'button', name = create_poll_button_name, caption = 'Create Poll'}
+        local create_poll_button = right_flow.add {type = 'button', name = create_poll_button_name, caption = 'Create Poll'}
         apply_button_style(create_poll_button)
     else
         local create_poll_button =
@@ -413,6 +411,9 @@ end
 
 local function remove_create_poll_frame(create_poll_frame, player_index)
     local data = Gui.get_data(create_poll_frame)
+    if not data then
+        return
+    end
 
     data.edit_mode = nil
     player_create_poll_data[player_index] = data
@@ -498,11 +499,9 @@ local function redraw_create_poll_content(data)
     update_duration(duration_slider)
 
     grid.add {type = 'flow'}
-    local question_label =
-        grid.add({type = 'flow'}).add {type = 'label', name = create_poll_label_name, caption = 'Question:'}
+    local question_label = grid.add({type = 'flow'}).add {type = 'label', name = create_poll_label_name, caption = 'Question:'}
 
-    local question_textfield =
-        grid.add({type = 'flow'}).add {type = 'textfield', name = create_poll_question_name, text = data.question}
+    local question_textfield = grid.add({type = 'flow'}).add {type = 'textfield', name = create_poll_question_name, text = data.question}
     question_textfield.style.width = 170
 
     Gui.set_data(question_label, question_textfield)
@@ -587,8 +586,7 @@ local function draw_create_poll_frame(parent, player, previous_data)
         confirm_name = create_poll_confirm_name
     end
 
-    local frame =
-        parent.add {type = 'frame', name = create_poll_frame_name, caption = title_text, direction = 'vertical'}
+    local frame = parent.add {type = 'frame', name = create_poll_frame_name, caption = title_text, direction = 'vertical'}
     frame.style.maximal_width = 320
 
     local scroll_pane = frame.add {type = 'scroll-pane', vertical_scroll_policy = 'always'}
@@ -649,8 +647,7 @@ local function draw_create_poll_frame(parent, player, previous_data)
 end
 
 local function show_new_poll(poll_data)
-    local message =
-        table.concat {poll_data.created_by.name, ' has created a new Poll #', poll_data.id, ': ', poll_data.question}
+    local message = table.concat {poll_data.created_by.name, ' has created a new Poll #', poll_data.id, ': ', poll_data.question}
 
     for _, p in pairs(game.connected_players) do
         local left = p.gui.left
@@ -826,12 +823,14 @@ local function player_joined(event)
             update_poll_viewer(data)
         end
     else
-        player.gui.top.add {
+        local b =
+            player.gui.top.add {
             type = 'sprite-button',
             name = main_button_name,
             sprite = 'item/programmable-speaker',
             tooltip = 'Let your question be heard!'
         }
+        b.style.maximal_height = 38
     end
 end
 
@@ -910,6 +909,10 @@ Gui.on_click(
         local button_data = Gui.get_data(event.element)
         local data = button_data.data
 
+        if not data then
+            return
+        end
+
         table.remove(data.answers, button_data.count)
         redraw_create_poll_content(data)
     end
@@ -919,7 +922,13 @@ Gui.on_click(
     create_poll_label_name,
     function(event)
         local textfield = Gui.get_data(event.element)
-        textfield.focus()
+        if not textfield then
+            return
+        end
+
+        if textfield and textfield.valid then
+            textfield.focus()
+        end
     end
 )
 
@@ -929,7 +938,13 @@ Gui.on_text_changed(
         local textfield = event.element
         local data = Gui.get_data(textfield)
 
-        data.question = textfield.text
+        if not data then
+            return
+        end
+
+        if textfield and textfield.valid then
+            data.question = textfield.text
+        end
     end
 )
 
@@ -939,7 +954,13 @@ Gui.on_text_changed(
         local textfield = event.element
         local data = Gui.get_data(textfield)
 
-        data.answers[data.count].text = textfield.text
+        if not data then
+            return
+        end
+
+        if textfield and textfield.valid then
+            data.answers[data.count].text = textfield.text
+        end
     end
 )
 
@@ -947,6 +968,10 @@ Gui.on_click(
     create_poll_add_answer_name,
     function(event)
         local data = Gui.get_data(event.element)
+
+        if not data then
+            return
+        end
 
         insert(data.answers, {text = ''})
         redraw_create_poll_content(data)
@@ -957,7 +982,9 @@ Gui.on_click(
     create_poll_close_name,
     function(event)
         local frame = Gui.get_data(event.element)
-        remove_create_poll_frame(frame, event.player_index)
+        if frame and frame.valid then
+            remove_create_poll_frame(frame, event.player_index)
+        end
     end
 )
 
@@ -1209,7 +1236,6 @@ function Class.reset()
         local main_frame = p.gui.left[main_frame_name]
         if main_frame and main_frame.valid then
             local main_frame_data = Gui.get_data(main_frame)
-            local poll_index = main_frame_data.poll_index
             update_poll_viewer(main_frame_data)
             remove_main_frame(main_frame, p.gui.left, p)
         end

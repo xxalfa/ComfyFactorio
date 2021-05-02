@@ -1,7 +1,6 @@
-require 'util'
 local Global = require 'utils.global'
 local surface_name = 'mountain_fortress_v3'
-local level_width = require 'maps.mountain_fortress_v3.terrain'.level_width
+local WPT = require 'maps.mountain_fortress_v3.table'
 local Reset = require 'maps.mountain_fortress_v3.soft_reset'
 
 local Public = {}
@@ -23,7 +22,7 @@ local starting_items = {['pistol'] = 1, ['firearm-magazine'] = 16, ['rail'] = 16
 function Public.create_surface()
     local map_gen_settings = {
         ['seed'] = math.random(10000, 99999),
-        ['width'] = level_width,
+        ['width'] = WPT.level_width,
         ['water'] = 0.001,
         ['starting_area'] = 1,
         ['cliff_settings'] = {cliff_elevation_interval = 0, cliff_elevation_0 = 0},
@@ -49,6 +48,35 @@ function Public.create_surface()
             ['tile:deep-water:probability'] = -10000
         }
     }
+    local modded = is_game_modded()
+    if modded then
+        map_gen_settings.autoplace_controls = {}
+        if game.active_mods['Krastorio2'] then
+            map_gen_settings.autoplace_controls.imersite = {
+                frequency = 1,
+                richness = 1,
+                size = 1
+            }
+            map_gen_settings.autoplace_controls['mineral-water'] = {
+                frequency = 1,
+                richness = 1,
+                size = 1
+            }
+            map_gen_settings.autoplace_controls['rare-metals'] = {
+                frequency = 1,
+                richness = 1,
+                size = 1
+            }
+        end
+        if game.active_mods['Factorio-Tiberium'] then
+            map_gen_settings.autoplace_controls.tibGrowthNode = {
+                frequency = 1,
+                richness = 1,
+                size = 1
+            }
+        end
+    end
+
     local mine = {}
     mine['control-setting:moisture:bias'] = 0.33
     mine['control-setting:moisture:frequency:multiplier'] = 1
@@ -58,19 +86,36 @@ function Public.create_surface()
     if not this.active_surface_index then
         this.active_surface_index = game.create_surface(surface_name, map_gen_settings).index
     else
-        this.active_surface_index =
-            Reset.soft_reset_map(game.surfaces[this.active_surface_index], map_gen_settings, starting_items).index
+        this.active_surface_index = Reset.soft_reset_map(game.surfaces[this.active_surface_index], map_gen_settings, starting_items).index
+    end
+
+    -- this.soft_reset_counter = Reset.get_reset_counter()
+
+    if not this.cleared_nauvis then
+        local mgs = game.surfaces['nauvis'].map_gen_settings
+        mgs.width = 16
+        mgs.height = 16
+        game.surfaces['nauvis'].map_gen_settings = mgs
+        game.surfaces['nauvis'].clear()
+        this.cleared_nauvis = true
     end
 
     return this.active_surface_index
 end
 
+--- Returns the surface index.
 function Public.get_active_surface()
     return this.active_surface
 end
 
+--- Returns the surface name.
 function Public.get_surface_name()
     return this.surface_name
+end
+
+--- Returns the amount of times the server has soft restarted.
+function Public.get_reset_counter()
+    return this.soft_reset_counter
 end
 
 function Public.get(key)
@@ -81,50 +126,4 @@ function Public.get(key)
     end
 end
 
---[[
-
-
-    local function clear_nauvis()
-        local surface = game.surfaces['nauvis']
-        local mgs = surface.map_gen_settings
-        mgs.width = 16
-        mgs.height = 16
-        surface.map_gen_settings = mgs
-        surface.clear()
-        surface.request_to_generate_chunks({0, 0}, 0.5)
-        surface.force_generate_chunk_requests()
-
-        game.forces.player.chart(surface, {{-16, -16}, {16, 16}})
-    end
-
-    local function place_grid()
-        local surface = game.surfaces['nauvis']
-        rendering.draw_text {
-            text = 'How did you end up here? O_o',
-            surface = surface,
-            target = {0, -12},
-            color = {r = 0.98, g = 0.66, b = 0.22},
-            scale = 3,
-            font = 'heading-1',
-            alignment = 'center',
-            scale_with_zoom = false
-        }
-        local e =
-            surface.create_entity(
-            {
-                name = 'player-port',
-                position = {0, 5},
-                force = 'neutral',
-                create_build_effect_smoke = false
-            }
-        )
-        e.destructible = false
-        e.minable = false
-        e.operable = false
-    end
-
-    local clear_nauvis_token = Token.register(clear_nauvis)
-    local place_grid_token = Token.register(place_grid)
-
- ]]
 return Public

@@ -3,6 +3,7 @@
 local Event = require 'utils.event'
 local Global = require 'utils.global'
 local Tabs = require 'comfy_panel.main'
+local SpamProtection = require 'utils.spam_protection'
 
 local Public = {}
 local this = {
@@ -28,16 +29,33 @@ function Public.get_table()
     return this
 end
 
-function Public.init_player_table(player)
+function Public.reset_tbl()
+    this.score_table['player'] = {
+        players = {}
+    }
+end
+
+function Public.init_player_table(player, reset)
     if not player then
         return
     end
+    if reset then
+        this.score_table[player.force.name].players[player.name] = {
+            built_entities = 0,
+            deaths = 0,
+            killscore = 0,
+            mined_entities = 0
+        }
+    end
+
     if not this.score_table[player.force.name] then
         this.score_table[player.force.name] = {}
     end
+
     if not this.score_table[player.force.name].players then
         this.score_table[player.force.name].players = {}
     end
+
     if not this.score_table[player.force.name].players[player.name] then
         this.score_table[player.force.name].players[player.name] = {
             built_entities = 0,
@@ -265,6 +283,7 @@ local function on_gui_click(event)
     if not event then
         return
     end
+
     if not event.element then
         return
     end
@@ -272,12 +291,17 @@ local function on_gui_click(event)
         return
     end
 
-    local player = game.players[event.element.player_index]
+    local player = game.players[event.player_index]
     local frame = Tabs.comfy_panel_get_active_frame(player)
     if not frame then
         return
     end
     if frame.name ~= 'Scoreboard' then
+        return
+    end
+
+    local is_spamming = SpamProtection.is_spamming(player, nil, 'Score Gui Click')
+    if is_spamming then
         return
     end
 

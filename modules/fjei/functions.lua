@@ -36,7 +36,7 @@ local function set_crafting_machines()
 	end
 end
 
-local uncommon_recipes = {"barrel", "void", "blackhole"}
+local uncommon_recipes = {"compressing", "barrel", "canister", "void", "blackhole"}
 local function is_uncommon_recipe(recipe_name)
 	for _, name in pairs(uncommon_recipes) do
 		local a, b = string_find(recipe_name, name, 1, true)

@@ -23,11 +23,11 @@ function Public.reset()
     end
     this.doors = {}
     this.wagons = {}
+    this.current_wagon_index = nil
     this.trains = {}
     this.players = {}
     this.surfaces = {}
     this.multiple_chests = true
-    this.allow_player_to_build_trains = false
     this.wagon_types = {
         ['cargo-wagon'] = true,
         ['artillery-wagon'] = true,
@@ -35,12 +35,21 @@ function Public.reset()
         ['locomotive'] = true
     }
 
-    this.wagon_areas = {
-        ['cargo-wagon'] = {left_top = {x = -20, y = 0}, right_bottom = {x = 20, y = 60}},
-        ['artillery-wagon'] = {left_top = {x = -20, y = 0}, right_bottom = {x = 20, y = 60}},
-        ['fluid-wagon'] = {left_top = {x = -20, y = 0}, right_bottom = {x = 20, y = 60}},
-        ['locomotive'] = {left_top = {x = -20, y = 0}, right_bottom = {x = 20, y = 60}}
-    }
+    if is_game_modded() then
+        this.wagon_areas = {
+            ['cargo-wagon'] = {left_top = {x = -45, y = 0}, right_bottom = {x = 45, y = 100}},
+            ['artillery-wagon'] = {left_top = {x = -45, y = 0}, right_bottom = {x = 45, y = 100}},
+            ['fluid-wagon'] = {left_top = {x = -45, y = 0}, right_bottom = {x = 45, y = 100}},
+            ['locomotive'] = {left_top = {x = -45, y = 0}, right_bottom = {x = 45, y = 100}}
+        }
+    else
+        this.wagon_areas = {
+            ['cargo-wagon'] = {left_top = {x = -30, y = 0}, right_bottom = {x = 30, y = 80}},
+            ['artillery-wagon'] = {left_top = {x = -30, y = 0}, right_bottom = {x = 30, y = 80}},
+            ['fluid-wagon'] = {left_top = {x = -30, y = 0}, right_bottom = {x = 30, y = 80}},
+            ['locomotive'] = {left_top = {x = -30, y = 0}, right_bottom = {x = 30, y = 80}}
+        }
+    end
 end
 
 function Public.get(key)

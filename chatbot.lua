@@ -17,7 +17,15 @@ local brain = {
         'If you have played for more than 5h in our maps then,',
         'you are eligible to run the command /jail and /free'
     },
-    [3] = {'Scenario repository for download:', 'https://github.com/M3wM3w/ComfyFactorio'}
+    [3] = {'Scenario repository for download:', 'https://github.com/M3wM3w/ComfyFactorio'},
+    [4] = {
+        'If you feel like the server is lagging, run the following command:',
+        '/server-ups',
+        'This will display the server UPS on your top right screen.'
+    },
+    [5] = {
+        "If you're not trusted - ask a trusted player or an admin to trust you."
+    }
 }
 
 local links = {
@@ -36,7 +44,11 @@ local links = {
     ['stealing'] = brain[2],
     ['stole'] = brain[2],
     ['troll'] = brain[2],
-    ['trolling'] = brain[2]
+    ['lag'] = brain[4],
+    ['lagging'] = brain[4],
+    ['trust'] = brain[5],
+    ['trusted'] = brain[5],
+    ['untrusted'] = brain[5]
 }
 
 local function on_player_created(event)
@@ -70,10 +82,7 @@ commands.add_command(
                 game.print(target_player.name .. ' is now a trusted player.', {r = 0.22, g = 0.99, b = 0.99})
                 for _, a in pairs(game.connected_players) do
                     if a.admin and a.name ~= player.name then
-                        a.print(
-                            '[ADMIN]: ' .. player.name .. ' trusted ' .. target_player.name,
-                            {r = 1, g = 0.5, b = 0.1}
-                        )
+                        a.print('[ADMIN]: ' .. player.name .. ' trusted ' .. target_player.name, {r = 1, g = 0.5, b = 0.1})
                     end
                 end
             end
@@ -126,10 +135,7 @@ commands.add_command(
                 game.print(target_player.name .. ' is now untrusted.', {r = 0.22, g = 0.99, b = 0.99})
                 for _, a in pairs(game.connected_players) do
                     if a.admin == true and a.name ~= player.name then
-                        a.print(
-                            '[ADMIN]: ' .. player.name .. ' untrusted ' .. target_player.name,
-                            {r = 1, g = 0.5, b = 0.1}
-                        )
+                        a.print('[ADMIN]: ' .. player.name .. ' untrusted ' .. target_player.name, {r = 1, g = 0.5, b = 0.1})
                     end
                 end
             end
@@ -152,7 +158,7 @@ commands.add_command(
 
 local function process_bot_answers(event)
     local player = game.players[event.player_index]
-    if player.admin == true then
+    if player.admin then
         return
     end
     local message = event.message
@@ -169,6 +175,10 @@ end
 
 local function on_console_chat(event)
     if not event.player_index then
+        return
+    end
+    local secs = Server.get_current_time()
+    if not secs then
         return
     end
     process_bot_answers(event)
@@ -213,10 +223,7 @@ local function on_console_command(event)
         for _, p in pairs(game.connected_players) do
             if p.admin == true and p.name ~= player.name then
                 if param then
-                    p.print(
-                        player.name .. ' ran: ' .. cmd .. ' "' .. param .. '" ' .. server_time,
-                        {r = 0.22, g = 0.99, b = 0.99}
-                    )
+                    p.print(player.name .. ' ran: ' .. cmd .. ' "' .. param .. '" ' .. server_time, {r = 0.22, g = 0.99, b = 0.99})
                 else
                     p.print(player.name .. ' ran: ' .. cmd .. server_time, {r = 0.22, g = 0.99, b = 0.99})
                 end

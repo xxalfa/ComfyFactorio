@@ -40,8 +40,7 @@ function Public.show(container)
     input_text_box_style.height = 32
     input_text_box_style.maximal_width = 1000
 
-    local refresh_button =
-        right_top_flow.add {type = 'sprite-button', name = refresh_name, sprite = 'utility/reset', tooltip = 'refresh'}
+    local refresh_button = right_top_flow.add {type = 'sprite-button', name = refresh_name, sprite = 'utility/reset', tooltip = 'refresh'}
     local refresh_button_style = refresh_button.style
     refresh_button_style.width = 32
     refresh_button_style.height = 32
@@ -75,6 +74,11 @@ Gui.on_click(
 
         local left_panel = element.parent.parent
         local data = Gui.get_data(left_panel)
+        if not data then
+            return
+        end
+
+        
         local right_panel = data.right_panel
         local selected_header = data.selected_header
         local input_text_box = data.input_text_box
@@ -89,7 +93,8 @@ Gui.on_click(
         input_text_box.text = concat {'global.tokens[', token_id, ']'}
         input_text_box.style.font_color = Color.black
 
-        local content = dump(Token.get_global(token_id)) or 'nil'
+        local id = Token.get_global(token_id)
+        local content = dump(id) or 'Could not load data.'
         right_panel.text = content
     end
 )

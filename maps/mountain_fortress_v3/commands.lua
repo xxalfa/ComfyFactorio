@@ -2,11 +2,12 @@ local Color = require 'utils.color_presets'
 local Task = require 'utils.task'
 local Server = require 'utils.server'
 local WPT = require 'maps.mountain_fortress_v3.table'
+local WD = require 'modules.wave_defense.table'
 
 local mapkeeper = '[color=blue]Mapkeeper:[/color]'
 
 commands.add_command(
-    'mf_commands',
+    'scenario',
     'Usable only for admins - controls the scenario!',
     function(cmd)
         local p
@@ -36,9 +37,7 @@ commands.add_command(
 
         if not this.reset_are_you_sure then
             this.reset_are_you_sure = true
-            p(
-                '[WARNING] This command will disable the soft-reset feature, run this command again if you really want to do this!'
-            )
+            p('[WARNING] This command will disable the soft-reset feature, run this command again if you really want to do this!')
             return
         end
 
@@ -61,7 +60,6 @@ commands.add_command(
             end
         elseif param == 'restartnow' then
             this.reset_are_you_sure = nil
-            p(player.name .. ' has restarted the game.')
             Server.start_scenario('Mountain_Fortress_v3')
             return
         elseif param == 'shutdown' then
@@ -121,6 +119,41 @@ commands.add_command(
                 Task.set_queue_speed(param)
             end
         end
+    end
+)
+
+commands.add_command(
+    'disable_biters',
+    'Usable only for admins - sets the queue speed of this map!',
+    function(cmd)
+        local player = game.player
+
+        if not player and player.valid then
+            return
+        end
+        if not player.admin then
+            player.print("[ERROR] You're not admin!", Color.fail)
+            return
+        end
+
+        local this = WPT.get()
+        local tbl = WD.get()
+
+        if not this.disable_biters_are_you_sure then
+            this.disable_biters_are_you_sure = true
+            player.print('[WARNING] This command will disable the wave_defense in-game, run this command again if you really want to do this!', Color.warning)
+            return
+        end
+
+        if not tbl.game_lost then
+            game.print(mapkeeper .. ' ' .. player.name .. ', has disabled the wave_defense module!', {r = 0.98, g = 0.66, b = 0.22})
+            tbl.game_lost = true
+        else
+            game.print(mapkeeper .. ' ' .. player.name .. ', has enabled the wave_defense module!', {r = 0.98, g = 0.66, b = 0.22})
+            tbl.game_lost = false
+        end
+
+        this.disable_biters_are_you_sure = nil
     end
 )
 

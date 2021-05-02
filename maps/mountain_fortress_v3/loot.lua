@@ -4,14 +4,28 @@ local Public = {}
 local random = math.random
 local abs = math.abs
 local floor = math.floor
+local sqrt = math.sqrt
 
 local blacklist = {
     ['atomic-bomb'] = true,
     ['cargo-wagon'] = true,
+    ['car'] = true,
+    ['tank'] = true,
+    ['spidertron'] = true,
     ['locomotive'] = true,
     ['artillery-wagon'] = true,
-    ['fluid-wagon'] = true
+    ['artillery-turret'] = true,
+    ['landfill'] = true,
+    ['discharge-defense-equipment'] = true,
+    ['discharge-defense-remote'] = true,
+    ['fluid-wagon'] = true,
+    ['pistol'] = true
 }
+
+function Public.get_distance(position)
+    local difficulty = sqrt(position.x ^ 2 + position.y ^ 2) * 0.0001
+    return difficulty
+end
 
 function Public.add(surface, position, chest)
     local budget = 48 + abs(position.y) * 1.75
@@ -28,12 +42,29 @@ function Public.add(surface, position, chest)
 
     budget = floor(budget) + 1
 
-    local item_stacks = LootRaffle.roll(budget, 8, blacklist)
+    local amount = random(1, 5)
+    local base_amount = 12 * amount
+    local distance_mod = Public.get_distance(position)
+
+    local result = base_amount + budget + distance_mod
+
+    local c = game.entity_prototypes[chest]
+    local slots = c.get_inventory_size(defines.inventory.chest)
+
+    local item_stacks = LootRaffle.roll(result, slots, blacklist)
     local container = surface.create_entity({name = chest, position = position, force = 'neutral'})
     for _, item_stack in pairs(item_stacks) do
         container.insert(item_stack)
     end
     container.minable = false
+
+    if random(1, 8) == 1 then
+        container.insert({name = 'coin', count = random(1, 32)})
+    elseif random(1, 32) == 1 then
+        container.insert({name = 'coin', count = random(1, 128)})
+    elseif random(1, 128) == 1 then
+        container.insert({name = 'coin', count = random(1, 256)})
+    end
 
     for _ = 1, 3, 1 do
         if random(1, 8) == 1 then
@@ -57,9 +88,18 @@ function Public.add_rare(surface, position, chest, magic)
         chest = 'crash-site-chest-' .. random(1, 2)
     end
 
+    local amount = random(1, 5)
+    local base_amount = 12 * amount
+    local distance_mod = Public.get_distance(position)
+
     budget = floor(budget) + 1
 
-    local item_stacks = LootRaffle.roll(budget, 8, blacklist)
+    local result = base_amount + budget + distance_mod
+
+    local c = game.entity_prototypes[chest]
+    local slots = c.get_inventory_size(defines.inventory.chest)
+
+    local item_stacks = LootRaffle.roll(result, slots, blacklist)
     local container = surface.create_entity({name = chest, position = position, force = 'neutral'})
     for _, item_stack in pairs(item_stacks) do
         container.insert(item_stack)

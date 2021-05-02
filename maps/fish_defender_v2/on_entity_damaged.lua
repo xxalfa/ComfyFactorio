@@ -1,7 +1,6 @@
 require 'maps.fish_defender_v2.boss_biters'
 
 local Event = require 'utils.event'
-local enhance_railgun = require 'maps.fish_defender_v2.railgun_enhancer'
 local explosive_bullets = require 'maps.fish_defender_v2.explosive_gun_bullets'
 local bouncy_shells = require 'maps.fish_defender_v2.bouncy_shells'
 local FDT = require 'maps.fish_defender_v2.table'
@@ -37,19 +36,10 @@ local function on_entity_damaged(event)
     local explosive_bullets_unlocked = FDT.get('explosive_bullets_unlocked')
     local bouncy_shells_unlocked = FDT.get('bouncy_shells_unlocked')
 
-    --if event.cause.unit_number then
-    --	if this.boss_biters[event.cause.unit_number] then
-    --		boss_biter.damaged_entity(event)
-    --	end
-    --end
-
     if event.cause.name ~= 'character' then
         return
     end
 
-    if enhance_railgun(event) then
-        return
-    end
     if explosive_bullets_unlocked then
         if explosive_bullets(event) then
             return

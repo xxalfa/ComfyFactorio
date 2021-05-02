@@ -2,23 +2,23 @@ require 'modules.rocks_broken_paint_tiles'
 
 local Event = require 'utils.event'
 local Server = require 'utils.server'
-local Map_score = require 'comfy_panel.map_score'
 local BiterRolls = require 'modules.wave_defense.biter_rolls'
+local BuriedEnemies = require 'maps.mountain_fortress_v3.buried_enemies'
 local Loot = require 'maps.mountain_fortress_v3.loot'
 local Pets = require 'maps.mountain_fortress_v3.biter_pets'
 local RPG_Settings = require 'modules.rpg.table'
 local Functions = require 'modules.rpg.functions'
+local Callbacks = require 'maps.mountain_fortress_v3.functions'
 local Mining = require 'maps.mountain_fortress_v3.mining'
 local Terrain = require 'maps.mountain_fortress_v3.terrain'
-local BiterHealthBooster = require 'modules.biter_health_booster'
-local Difficulty = require 'modules.difficulty_vote'
 local Traps = require 'maps.mountain_fortress_v3.traps'
 local Locomotive = require 'maps.mountain_fortress_v3.locomotive'
-local ExplosiveBullets = require 'maps.mountain_fortress_v3.explosive_gun_bullets'
+local Collapse = require 'modules.collapse'
 local Alert = require 'utils.alert'
 local Task = require 'utils.task'
+local Score = require 'comfy_panel.score'
 local Token = require 'utils.token'
---local HD = require 'modules.hidden_dimension.main'
+local HS = require 'maps.mountain_fortress_v3.highscore'
 
 -- tables
 local WPT = require 'maps.mountain_fortress_v3.table'
@@ -32,21 +32,31 @@ local abs = math.abs
 local sqrt = math.sqrt
 local round = math.round
 
---local raise_event = script.raise_event
+local chests = {
+    'wooden-chest',
+    'iron-chest',
+    'steel-chest',
+    'crash-site-chest-1',
+    'crash-site-chest-2',
+    'crash-site-spaceship-wreck-big-1',
+    'crash-site-spaceship-wreck-big-2',
+    'crash-site-spaceship-wreck-medium-1',
+    'crash-site-spaceship-wreck-medium-2',
+    'crash-site-spaceship-wreck-medium-3'
+}
 
-local mapkeeper = '[color=blue]Mapkeeper:[/color]\n'
-local comfylatron = '[color=blue]Comfylatron:[/color]\n'
+local size_chests = #chests
 
 local treasure_chest_messages = {
-    "You notice an old crate within the rubble. It's filled with treasure!",
-    "You find a chest underneath the broken rocks. It's filled with goodies!",
-    'We has found the precious!'
+    ({'entity.treasure_1'}),
+    ({'entity.treasure_2'}),
+    ({'entity.treasure_3'})
 }
 
 local rare_treasure_chest_messages = {
-    'Your magic improves. You have found a chest that is filled with rare treasures!',
-    "Oh how wonderful. You found a chest underneath the broken rocks. It's filled with rare goodies!",
-    "You're a wizard! We have found the rare precious!"
+    ({'entity.treasure_rare_1'}),
+    ({'entity.treasure_rare_2'}),
+    ({'entity.treasure_rare_3'})
 }
 
 local disabled_threats = {
@@ -55,10 +65,10 @@ local disabled_threats = {
 }
 
 local defeated_messages = {
-    "Oh no, the biters nom'ed the train away!",
-    "I'm not 100% sure, but - apparently the train was chewed away.",
-    'You had one objective - defend the train *-*',
-    "Looks like we're resetting cause you did not defend the train ._."
+    ({'entity.defeated_1'}),
+    ({'entity.defeated_2'}),
+    ({'entity.defeated_3'}),
+    ({'entity.defeated_4'})
 }
 
 local protect_types = {
@@ -67,6 +77,7 @@ local protect_types = {
     ['fluid-wagon'] = true,
     ['locomotive'] = true,
     ['reactor'] = true,
+    ['spider-vehicle'] = true,
     ['car'] = true
 }
 
@@ -76,78 +87,215 @@ local reset_game =
         local this = data.this
         local Reset_map = data.reset_map
         if this.soft_reset then
+            HS.set_scores()
             this.game_reset_tick = nil
             Reset_map()
             return
         end
         if this.restart then
-            local message = 'Soft-reset is disabled! Server will restart from scenario to load new changes.'
-            Server.to_discord_bold(table.concat {'*** ', message, ' ***'})
+            HS.set_scores()
+            local message = ({'entity.reset_game'})
+            Server.to_discord_bold(message, true)
             Server.start_scenario('Mountain_Fortress_v3')
             this.announced_message = true
             return
         end
         if this.shutdown then
-            local message = 'Soft-reset is disabled! Server will shutdown. Most likely because of updates.'
-            Server.to_discord_bold(table.concat {'*** ', message, ' ***'})
+            HS.set_scores()
+            local message = ({'entity.shutdown_game'})
+            Server.to_discord_bold(message, true)
             Server.stop_scenario()
             return
         end
     end
 )
 
-local function set_objective_health(final_damage_amount)
-    local this = WPT.get()
+local function exists()
+    local carriages = WPT.get('carriages')
+    local t = {}
+    for i = 1, #carriages do
+        local e = carriages[i]
+        if (e and e.valid) then
+            t[e.unit_number] = true
+        end
+    end
+    return t
+end
+
+local function get_random_weighted(weighted_table, item_index, weight_index)
+    local total_weight = 0
+    item_index = item_index or 1
+    weight_index = weight_index or 2
+
+    for _, w in pairs(weighted_table) do
+        total_weight = total_weight + w[weight_index]
+    end
+
+    local index = random() * total_weight
+    local weight_sum = 0
+    for _, w in pairs(weighted_table) do
+        weight_sum = weight_sum + w[weight_index]
+        if weight_sum >= index then
+            return w[item_index]
+        end
+    end
+end
+
+local function on_entity_removed(data)
+    local entity = data.entity
+    local upgrades = WPT.get('upgrades')
+
+    local built = {
+        ['land-mine'] = upgrades.landmine.built,
+        ['flamethrower-turret'] = upgrades.flame_turret.built
+    }
+
+    local validator = {
+        ['land-mine'] = 'landmine',
+        ['flamethrower-turret'] = 'flame_turret'
+    }
+
+    local name = validator[entity.name]
+
+    if built[entity.name] and entity.force.index == 1 then
+        upgrades[name].built = upgrades[name].built - 1
+        if upgrades[name].built <= 0 then
+            upgrades[name].built = 0
+        end
+    end
+end
+
+local function check_health()
+    local locomotive_health = WPT.get('locomotive_health')
+    local locomotive_max_health = WPT.get('locomotive_max_health')
+    local carriages = WPT.get('carriages')
+    local m = locomotive_health / locomotive_max_health
+    if carriages then
+        for i = 1, #carriages do
+            local entity = carriages[i]
+            if not (entity and entity.valid) then
+                return
+            end
+            local cargo_health = 600
+            local modded = is_game_modded()
+            if modded then
+                cargo_health = 750
+            end
+            if entity.type == 'locomotive' then
+                entity.health = 1000 * m
+            else
+                entity.health = cargo_health * m
+            end
+        end
+    end
+end
+
+local function check_health_final_damage(final_damage_amount)
+    local carriages = WPT.get('carriages')
+    if carriages then
+        for i = 1, #carriages do
+            local entity = carriages[i]
+            if not (entity and entity.valid) then
+                return
+            end
+            entity.health = entity.health + final_damage_amount
+        end
+    end
+end
+
+local function set_train_final_health(final_damage_amount)
     if final_damage_amount == 0 then
         return
     end
 
-    if not this.locomotive then
-        return
-    end
-    if not this.locomotive.valid then
+    local locomotive = WPT.get('locomotive')
+    if not (locomotive and locomotive.valid) then
         return
     end
 
-    if this.locomotive_health <= 5000 then
-        if not this.poison_deployed then
-            for i = 1, 2, 1 do
-                Locomotive.enable_poison_defense()
+    local locomotive_health = WPT.get('locomotive_health')
+    local locomotive_max_health = WPT.get('locomotive_max_health')
+    local poison_deployed = WPT.get('poison_deployed')
+    local robotics_deployed = WPT.get('robotics_deployed')
+
+    if locomotive_health >= 4000 and locomotive_health <= 6000 then
+        if not poison_deployed then
+            local carriages = WPT.get('carriages')
+
+            if carriages then
+                for i = 1, #carriages do
+                    local entity = carriages[i]
+                    Locomotive.enable_poison_defense(entity.position)
+                end
+            end
+
+            local p = {
+                position = locomotive.position
+            }
+            local msg = ({'entity.train_taking_damage'})
+            Alert.alert_all_players_location(p, msg)
+            WPT.set().poison_deployed = true
+        end
+    elseif locomotive_health >= 1500 and locomotive_health <= 3900 then
+        if not robotics_deployed then
+            local carriages = WPT.get('carriages')
+
+            if carriages then
+                for _ = 1, 10 do
+                    for i = 1, #carriages do
+                        local entity = carriages[i]
+                        Locomotive.enable_robotic_defense(entity.position)
+                    end
+                end
             end
             local p = {
-                position = this.locomotive.position
+                position = locomotive.position
             }
-            local msg = comfylatron .. 'Train is taking heavy damage.\nDeploying defense mechanisms.'
+            local msg = ({'entity.train_taking_damage'})
             Alert.alert_all_players_location(p, msg)
-            this.poison_deployed = true
+            WPT.set().robotics_deployed = true
         end
-    elseif this.locomotive_health >= this.locomotive_max_health then
-        this.poison_deployed = false
+    elseif locomotive_health >= locomotive_max_health then
+        WPT.set().poison_deployed = false
     end
 
-    if this.locomotive_health <= 0 then
-        this.locomotive.health = this.locomotive.health + final_damage_amount
+    if locomotive_health <= 0 then
+        check_health_final_damage(final_damage_amount)
         return
     end
 
-    this.locomotive_health = floor(this.locomotive_health - final_damage_amount)
-    if this.locomotive_health > this.locomotive_max_health then
-        this.locomotive_health = this.locomotive_max_health
+    WPT.set('locomotive_health', floor(locomotive_health - final_damage_amount))
+    if locomotive_health > locomotive_max_health then
+        WPT.set('locomotive_health', locomotive_max_health)
     end
+    locomotive_health = WPT.get('locomotive_health')
 
-    if this.locomotive_health <= 0 then
+    if locomotive_health <= 0 then
+        WPT.set('game_lost', true)
         Public.loco_died()
     end
 
-    local m = this.locomotive_health / this.locomotive_max_health
-    this.locomotive.health = 1000 * m
+    check_health()
 
-    rendering.set_text(this.health_text, 'HP: ' .. this.locomotive_health .. ' / ' .. this.locomotive_max_health)
+    local health_text = WPT.get('health_text')
+
+    rendering.set_text(health_text, 'HP: ' .. locomotive_health .. ' / ' .. locomotive_max_health)
 end
 
 local function protect_entities(event)
-    local this = WPT.get()
     local entity = event.entity
+    local dmg = event.final_damage_amount
+    if not dmg then
+        return
+    end
+
+    local check_heavy_damage = WPT.get('check_heavy_damage')
+
+    if check_heavy_damage then
+        if entity.type == 'simple-entity' and dmg >= 500 then
+            entity.health = entity.health + dmg
+        end
+    end
 
     if entity.force.index ~= 1 then
         return
@@ -165,103 +313,64 @@ local function protect_entities(event)
         return false
     end
 
+    local units = exists()
     if is_protected(entity) then
-        if event.cause and event.cause.valid then
-            if event.cause.force.index == 2 and entity.unit_number == this.locomotive.unit_number then
-                set_objective_health(event.final_damage_amount)
-            elseif event.cause.force.index == 2 then
-                return
-            else
-                event.entity.health = event.entity.health + event.final_damage_amount
+        if (event.cause and event.cause.valid) then
+            if event.cause.force.index == 2 then
+                if units and units[entity.unit_number] then
+                    set_train_final_health(dmg)
+                    return
+                else
+                    entity.health = entity.health - dmg
+                    return
+                end
+            end
+        elseif not (event.cause and event.cause.valid) then
+            if event.force and event.force.index == 2 then
+                if units and units[entity.unit_number] then
+                    set_train_final_health(dmg)
+                    return
+                else
+                    entity.health = entity.health - dmg
+                    return
+                end
             end
         end
-        event.entity.health = event.entity.health + event.final_damage_amount
+
+        entity.health = entity.health + dmg
     end
 end
 
-local function hidden_biter(entity)
-    local surface = entity.surface
-    local h = floor(abs(entity.position.y))
-    local m = 1 / Terrain.level_depth
-    local count = floor(random(0, h + Terrain.level_depth) * m) + 1
-    local position = surface.find_non_colliding_position('small-biter', entity.position, 16, 0.5)
-    if not position then
-        position = entity.position
-    end
-
-    BiterRolls.wave_defense_set_unit_raffle(h * 0.20)
-
-    for _ = 1, count, 1 do
-        local unit
-        if random(1, 3) == 1 then
-            unit = surface.create_entity({name = BiterRolls.wave_defense_roll_spitter_name(), position = position})
-        else
-            unit = surface.create_entity({name = BiterRolls.wave_defense_roll_biter_name(), position = position})
-        end
-
-        if random(1, 64) == 1 then
-            BiterHealthBooster.add_boss_unit(unit, m * h * 5 + 1, 0.38)
-        end
-    end
-end
-
-local function hidden_worm(entity)
-    BiterRolls.wave_defense_set_worm_raffle(sqrt(entity.position.x ^ 2 + entity.position.y ^ 2) * 0.20)
-    entity.surface.create_entity({name = BiterRolls.wave_defense_roll_worm_name(), position = entity.position})
-end
-
-local function hidden_biter_pet(event)
-    if random(1, 2048) ~= 1 then
+local function hidden_biter_pet(player, entity)
+    if random(1, 1024) ~= 1 then
         return
     end
-    BiterRolls.wave_defense_set_unit_raffle(sqrt(event.entity.position.x ^ 2 + event.entity.position.y ^ 2) * 0.25)
+
+    local pos = entity.position
+
+    BiterRolls.wave_defense_set_unit_raffle(sqrt(pos.x ^ 2 + pos.y ^ 2) * 0.25)
     local unit
     if random(1, 3) == 1 then
-        unit =
-            event.entity.surface.create_entity(
-            {name = BiterRolls.wave_defense_roll_spitter_name(), position = event.entity.position}
-        )
+        unit = entity.surface.create_entity({name = BiterRolls.wave_defense_roll_spitter_name(), position = pos})
     else
-        unit =
-            event.entity.surface.create_entity(
-            {name = BiterRolls.wave_defense_roll_biter_name(), position = event.entity.position}
-        )
+        unit = entity.surface.create_entity({name = BiterRolls.wave_defense_roll_biter_name(), position = pos})
     end
-    Pets.biter_pets_tame_unit(game.players[event.player_index], unit, true)
+    Pets.biter_pets_tame_unit(game.players[player.index], unit, true)
 end
 
-local function hidden_treasure(event)
-    local player = game.players[event.player_index]
+local function hidden_treasure(player, entity)
     local rpg = RPG_Settings.get('rpg_t')
     local magic = rpg[player.index].magicka
-    local name = Difficulty.get('name')
-    if name == 'Easy' then
-        if random(1, 220) ~= 1 then
-            return
-        end
-    elseif name == 'Normal' then
-        if random(1, 320) ~= 1 then
-            return
-        end
-    elseif name == 'Hard' then
-        if random(1, 420) ~= 1 then
-            return
-        end
-    elseif name == 'Insane' then
-        if random(1, 520) ~= 1 then
-            return
-        end
-    end
 
     if magic > 50 then
         local msg = rare_treasure_chest_messages[random(1, #rare_treasure_chest_messages)]
         Alert.alert_player(player, 5, msg)
-        Loot.add_rare(event.entity.surface, event.entity.position, 'wooden-chest', magic)
+        Loot.add_rare(entity.surface, entity.position, 'wooden-chest', magic)
         return
     end
     local msg = treasure_chest_messages[random(1, #treasure_chest_messages)]
-    Alert.alert_player(player, 5, msg)
-    Loot.add(event.entity.surface, event.entity.position, 'wooden-chest')
+    Alert.alert_player(player, 5, msg, nil, nil, 0.3)
+    Loot.add(entity.surface, entity.position, chests[random(1, size_chests)])
 end
 
 local function biters_chew_rocks_faster(event)
@@ -282,7 +391,8 @@ local function biters_chew_rocks_faster(event)
 end
 
 local projectiles = {'grenade', 'explosive-rocket', 'grenade', 'explosive-rocket', 'explosive-cannon-projectile'}
-local function angry_tree(entity, cause)
+
+local function angry_tree(entity, cause, player)
     if entity.type ~= 'tree' then
         return
     end
@@ -290,13 +400,13 @@ local function angry_tree(entity, cause)
     if abs(entity.position.y) < Terrain.level_depth then
         return
     end
-    if random(1, 4) == 1 then
-        hidden_biter(entity)
+    if random(1, 6) == 1 then
+        BuriedEnemies.buried_biter(entity.surface, entity.position)
     end
     if random(1, 8) == 1 then
-        hidden_worm(entity)
+        BuriedEnemies.buried_worm(entity.surface, entity.position)
     end
-    if random(1, 16) ~= 1 then
+    if random(1, 32) ~= 1 then
         return
     end
     local position = false
@@ -307,6 +417,24 @@ local function angry_tree(entity, cause)
     end
     if not position then
         position = {entity.position.x + (-20 + random(0, 40)), entity.position.y + (-20 + random(0, 40))}
+    end
+    if player then
+        local forest_zone = RPG_Settings.get_value_from_player(player.index, 'forest_zone')
+        if forest_zone and random(1, 32) == 1 then
+            local cbl = Callbacks.power_source_callback
+            local data = {callback_data = Callbacks.laser_turrent_power_source}
+            local e =
+                entity.surface.create_entity(
+                {
+                    name = 'laser-turret',
+                    position = entity.position,
+                    force = 'enemy'
+                }
+            )
+            local callback = Token.get(cbl)
+            callback(e, data)
+            return
+        end
     end
 
     entity.surface.create_entity(
@@ -324,13 +452,295 @@ end
 
 local function give_coin(player)
     local coin_amount = WPT.get('coin_amount')
+    local coin_override = WPT.get('coin_override')
+    local forest_zone = RPG_Settings.get_value_from_player(player.index, 'forest_zone')
+
+    if forest_zone then
+        if random(1, 3) ~= 1 then
+            return
+        end
+    end
+
     if coin_amount >= 1 then
-        player.insert({name = 'coin', count = coin_amount})
+        if coin_override then
+            player.insert({name = 'coin', count = coin_override})
+        else
+            player.insert({name = 'coin', count = random(1, coin_amount)})
+        end
     end
 end
 
+local immunity_spawner =
+    Token.register(
+    function(data)
+        local entity = data.entity
+        if not entity or not entity.valid then
+            return
+        end
+        entity.destructible = true
+    end
+)
+
+local mining_events = {
+    {
+        function()
+        end,
+        300000,
+        'Nothing'
+    },
+    {
+        function()
+        end,
+        16384,
+        'Nothing'
+    },
+    {
+        function()
+        end,
+        4096,
+        'Nothing'
+    },
+    {
+        function(entity)
+            if Locomotive.is_around_train(entity) then
+                entity.destroy()
+                return
+            end
+
+            BuriedEnemies.buried_biter(entity.surface, entity.position, 1)
+            entity.destroy()
+        end,
+        4096,
+        'Angry Biter #2'
+    },
+    {
+        function(entity)
+            if Locomotive.is_around_train(entity) then
+                entity.destroy()
+                return
+            end
+
+            BuriedEnemies.buried_biter(entity.surface, entity.position)
+            entity.destroy()
+        end,
+        512,
+        'Angry Biter #2'
+    },
+    {
+        function(entity)
+            if Locomotive.is_around_train(entity) then
+                entity.destroy()
+                return
+            end
+
+            BuriedEnemies.buried_worm(entity.surface, entity.position)
+            entity.destroy()
+        end,
+        2048,
+        'Angry Worm'
+    },
+    {
+        function(entity)
+            if Locomotive.is_around_train(entity) then
+                entity.destroy()
+                return
+            end
+
+            Traps(entity.surface, entity.position)
+            entity.destroy()
+        end,
+        2048,
+        'Dangerous Trap'
+    },
+    {
+        function(entity, index)
+            if Locomotive.is_around_train(entity) then
+                entity.destroy()
+                return
+            end
+
+            local player = game.get_player(index)
+
+            if entity.type == 'tree' then
+                angry_tree(entity, player.character, player)
+                entity.destroy()
+            end
+        end,
+        1024,
+        'Angry Tree'
+    },
+    {
+        function(entity, index)
+            local player = game.get_player(index)
+            hidden_treasure(player, entity)
+        end,
+        1024,
+        'Treasure_Tier_1'
+    },
+    {
+        function(entity, index)
+            local player = game.get_player(index)
+            hidden_treasure(player, entity)
+        end,
+        512,
+        'Treasure_Tier_2'
+    },
+    {
+        function(entity, index)
+            local player = game.get_player(index)
+            hidden_treasure(player, entity)
+        end,
+        256,
+        'Treasure_Tier_3'
+    },
+    {
+        function(entity, index)
+            local player = game.get_player(index)
+            hidden_treasure(player, entity)
+        end,
+        128,
+        'Treasure_Tier_4'
+    },
+    {
+        function(entity, index)
+            local player = game.get_player(index)
+            hidden_treasure(player, entity)
+        end,
+        64,
+        'Treasure_Tier_5'
+    },
+    {
+        function(entity, index)
+            local player = game.get_player(index)
+            hidden_treasure(player, entity)
+        end,
+        32,
+        'Treasure_Tier_6'
+    },
+    {
+        function(entity, index)
+            local player = game.get_player(index)
+            hidden_treasure(player, entity)
+        end,
+        16,
+        'Treasure_Tier_7'
+    },
+    {
+        function(entity, index)
+            local player = game.get_player(index)
+            Public.unstuck_player(index)
+            hidden_biter_pet(player, entity)
+        end,
+        256,
+        'Pet'
+    },
+    {
+        function(entity, index)
+            if Locomotive.is_around_train(entity) then
+                entity.destroy()
+                return
+            end
+
+            local ent_to_create = {'biter-spawner', 'spitter-spawner'}
+
+            if is_mod_loaded('bobenemies') then
+                ent_to_create = {'bob-biter-spawner', 'bob-spitter-spawner'}
+            end
+
+            local position = entity.position
+            local surface = entity.surface
+            local e = surface.create_entity({name = ent_to_create[random(1, #ent_to_create)], position = position, force = 'enemy'})
+            if is_mod_loaded('Krastorio2') then
+                local tiles = {}
+                for y = 3 * -2, 3 * 2, 1 do
+                    for x = 3 * -2, 3 * 2, 1 do
+                        local p = {y = position.y + y, x = position.x + x}
+                        tiles[#tiles + 1] = {name = 'kr-creep', position = p}
+                    end
+                end
+                entity.surface.set_tiles(tiles, true)
+            end
+
+            e.destructible = false
+            Task.set_timeout_in_ticks(300, immunity_spawner, {entity = e})
+            Public.unstuck_player(index)
+        end,
+        512,
+        'Nest'
+    },
+    {
+        function(entity, index)
+            if Locomotive.is_around_train(entity) then
+                entity.destroy()
+                return
+            end
+
+            local ent_to_create = {'biter-spawner', 'spitter-spawner'}
+
+            if is_mod_loaded('bobenemies') then
+                ent_to_create = {'bob-biter-spawner', 'bob-spitter-spawner'}
+            end
+
+            local position = entity.position
+            local surface = entity.surface
+            local e = surface.create_entity({name = ent_to_create[random(1, #ent_to_create)], position = position, force = 'enemy'})
+            if is_mod_loaded('Krastorio2') then
+                local tiles = {}
+                for y = 3 * -2, 3 * 2, 1 do
+                    for x = 3 * -2, 3 * 2, 1 do
+                        local p = {y = position.y + y, x = position.x + x}
+                        tiles[#tiles + 1] = {name = 'kr-creep', position = p}
+                    end
+                end
+                entity.surface.set_tiles(tiles, true)
+            end
+
+            e.destructible = false
+            Task.set_timeout_in_ticks(300, immunity_spawner, {entity = e})
+            Public.unstuck_player(index)
+        end,
+        512,
+        'Nest'
+    },
+    {
+        function(entity)
+            local position = entity.position
+            local surface = entity.surface
+            surface.create_entity({name = 'compilatron', position = position, force = 'player'})
+        end,
+        64,
+        'Friendly Compilatron'
+    },
+    {
+        function(entity)
+            if Locomotive.is_around_train(entity) then
+                entity.destroy()
+                return
+            end
+
+            local position = entity.position
+            local surface = entity.surface
+            surface.create_entity({name = 'compilatron', position = position, force = 'enemy'})
+        end,
+        128,
+        'Enemy Compilatron'
+    },
+    {
+        function(entity, index)
+            local position = entity.position
+            local surface = entity.surface
+            surface.create_entity({name = 'car', position = position, force = 'player'})
+            Public.unstuck_player(index)
+            local player = game.players[index]
+            local msg = ({'entity.found_car', player.name})
+            Alert.alert_player(player, 15, msg)
+        end,
+        32,
+        'Car'
+    }
+}
+
 local function on_player_mined_entity(event)
-    local this = WPT.get()
     local entity = event.entity
     local player = game.players[event.player_index]
     if not player.valid then
@@ -348,36 +758,23 @@ local function on_player_mined_entity(event)
         return
     end
 
-    local upg = this.upgrades
-
-    local built = {
-        ['land-mine'] = upg.landmine.built,
-        ['flamethrower-turret'] = upg.flame_turret.built
+    local d = {
+        entity = entity
     }
 
-    local validator = {
-        ['land-mine'] = 'landmine',
-        ['flamethrower-turret'] = 'flame_turret'
-    }
-
-    local name = validator[entity.name]
-
-    if built[entity.name] and entity.force.index == 1 then
-        this.upgrades[name].built = this.upgrades[name].built - 1
-        if this.upgrades[name].built <= 0 then
-            this.upgrades[name].built = 0
-        end
-    end
+    on_entity_removed(d)
 
     if disabled_threats[entity.name] then
         return
     end
 
-    if entity.type == 'simple-entity' or entity.type == 'tree' then
-        this.mined_scrap = this.mined_scrap + 1
+    local mined_scrap = WPT.get('mined_scrap')
+
+    if entity.type == 'simple-entity' or entity.type == 'simple-entity-with-owner' or entity.type == 'tree' then
+        WPT.set().mined_scrap = mined_scrap + 1
         Mining.on_player_mined_entity(event)
         if entity.type == 'tree' then
-            if random(1, 2) == 1 then
+            if random(1, 3) == 1 then
                 give_coin(player)
             end
         else
@@ -386,34 +783,13 @@ local function on_player_mined_entity(event)
         if rpg_char.stone_path then
             entity.surface.set_tiles({{name = 'stone-path', position = entity.position}}, true)
         end
-        if Locomotive.is_around_train(entity) then
-            entity.destroy()
-            return
-        end
 
-        if random(1, 32) == 1 then
-            hidden_biter(event.entity)
-            entity.destroy()
-            return
-        end
-        if random(1, 512) == 1 then
-            hidden_worm(event.entity)
-            entity.destroy()
-            return
-        end
-        if random(1, 512) == 1 then
-            Traps(entity.surface, entity.position)
-            return
-        end
-        hidden_biter_pet(event)
-        hidden_treasure(event)
-        angry_tree(event.entity, game.players[event.player_index].character)
-        entity.destroy()
+        local func = get_random_weighted(mining_events)
+        func(entity, player.index)
     end
 end
 
 local function on_robot_mined_entity(event)
-    local this = WPT.get()
     local entity = event.entity
 
     if not entity.valid then
@@ -426,26 +802,11 @@ local function on_robot_mined_entity(event)
         return
     end
 
-    local upg = this.upgrades
-
-    local built = {
-        ['land-mine'] = upg.landmine.built,
-        ['flamethrower-turret'] = upg.flame_turret.built
+    local d = {
+        entity = entity
     }
 
-    local validator = {
-        ['land-mine'] = 'landmine',
-        ['flamethrower-turret'] = 'flame_turret'
-    }
-
-    local name = validator[entity.name]
-
-    if built[entity.name] and entity.force.index == 1 then
-        this.upgrades[name].built = this.upgrades[name].built - 1
-        if this.upgrades[name].built <= 0 then
-            this.upgrades[name].built = 0
-        end
-    end
+    on_entity_removed(d)
 end
 
 local function get_damage(event)
@@ -562,36 +923,27 @@ end
 local function on_entity_damaged(event)
     local entity = event.entity
 
-    if not entity then
-        return
-    end
-
-    if not entity.valid then
+    if not (entity and entity.valid) then
         return
     end
 
     local wave_number = WD.get_wave()
-    local boss_wave_warning = WD.alert_boss_wave()
+    local boss_wave_warning = WD.get_alert_boss_wave()
     local munch_time = WPT.get('munch_time')
 
     protect_entities(event)
     biters_chew_rocks_faster(event)
 
     if munch_time then
-        if boss_wave_warning or wave_number >= 1500 then
+        if boss_wave_warning or wave_number >= 1000 then
             if random(0, 512) == 1 then
                 boss_puncher(event)
             end
         end
     end
-    if WPT.get('explosive_bullets') then
-        ExplosiveBullets.explosive_bullets(event)
-        return
-    end
 end
 
 local function on_player_repaired_entity(event)
-    local this = WPT.get()
     if not event.entity then
         return
     end
@@ -602,26 +954,28 @@ local function on_player_repaired_entity(event)
         return
     end
     local entity = event.entity
-    if entity == this.locomotive then
+    local units = exists()
+
+    if units[entity.unit_number] then
         local player = game.players[event.player_index]
         local repair_speed = Functions.get_magicka(player)
         if repair_speed <= 0 then
-            set_objective_health(-1)
+            set_train_final_health(-1)
             return
         else
-            set_objective_health(-repair_speed)
+            set_train_final_health(-repair_speed)
             return
         end
     end
 end
 
 local function on_entity_died(event)
-    local this = WPT.get()
-
     local entity = event.entity
     if not entity.valid then
         return
     end
+
+    local cause = event.cause
 
     local map_name = 'mountain_fortress_v3'
 
@@ -629,30 +983,20 @@ local function on_entity_died(event)
         return
     end
 
-    local upg = this.upgrades
-
-    local built = {
-        ['land-mine'] = upg.landmine.built,
-        ['flamethrower-turret'] = upg.flame_turret.built
+    local d = {
+        entity = entity
     }
 
-    local validator = {
-        ['land-mine'] = 'landmine',
-        ['flamethrower-turret'] = 'flame_turret'
-    }
+    on_entity_removed(d)
 
-    local name = validator[entity.name]
+    local player
 
-    if built[entity.name] and entity.force.index == 1 then
-        this.upgrades[name].built = this.upgrades[name].built - 1
-        if this.upgrades[name].built <= 0 then
-            this.upgrades[name].built = 0
-        end
-    end
-
-    if event.cause then
-        if event.cause.valid then
-            if event.cause.force.index == 2 or event.cause.force.index == 3 then
+    if cause then
+        if cause.valid then
+            if (cause and cause.name == 'character' and cause.player) then
+                player = cause.player
+            end
+            if cause.force.index == 2 or cause.force.index == 3 then
                 entity.destroy()
                 return
             end
@@ -663,10 +1007,16 @@ local function on_entity_died(event)
         return
     end
 
+    local biters_killed = WPT.get('biters_killed')
+    local biters = WPT.get('biters')
+
     if entity.type == 'unit' or entity.type == 'unit-spawner' then
-        this.biters_killed = this.biters_killed + 1
+        WPT.set().biters_killed = biters_killed + 1
+        biters.amount = biters.amount - 1
+        if biters.amount <= 0 then
+            biters.amount = 0
+        end
         if Locomotive.is_around_train(entity) then
-            entity.destroy()
             return
         end
         if random(1, 512) == 1 then
@@ -675,14 +1025,9 @@ local function on_entity_died(event)
         end
     end
 
-    local data = {
-        entity = entity,
-        surface = entity.surface
-    }
-
     if entity.type == 'tree' then
         for _, e in pairs(
-            event.entity.surface.find_entities_filtered(
+            entity.surface.find_entities_filtered(
                 {
                     area = {
                         {entity.position.x - 4, entity.position.y - 4},
@@ -698,10 +1043,9 @@ local function on_entity_died(event)
             end
         end
         if Locomotive.is_around_train(entity) then
-            entity.destroy()
             return
         end
-        angry_tree(entity, event.cause)
+        angry_tree(entity, cause, player)
         return
     end
 
@@ -711,51 +1055,168 @@ local function on_entity_died(event)
             return
         end
         if random(1, 32) == 1 then
-            hidden_biter(entity)
-            Mining.entity_died_randomness(data)
+            BuriedEnemies.buried_biter(entity.surface, entity.position)
             entity.destroy()
             return
         end
         if random(1, 64) == 1 then
-            hidden_worm(entity)
-            Mining.entity_died_randomness(data)
+            BuriedEnemies.buried_worm(entity.surface, entity.position)
             entity.destroy()
             return
         end
         if random(1, 512) == 1 then
             Traps(entity.surface, entity.position)
-            Mining.entity_died_randomness(data)
             return
         end
-        Mining.entity_died_randomness(data)
         entity.destroy()
         return
     end
 end
 
-function Public.set_scores()
-    local this = WPT.get()
-    local loco = this.locomotive
-    if not loco then
+local function get_sorted_list(column_name, score_list)
+    for _ = 1, #score_list, 1 do
+        for y = 1, #score_list, 1 do
+            if not score_list[y + 1] then
+                break
+            end
+            if score_list[y][column_name] < score_list[y + 1][column_name] then
+                local key = score_list[y]
+                score_list[y] = score_list[y + 1]
+                score_list[y + 1] = key
+            end
+        end
+    end
+    return score_list
+end
+
+local function get_mvps(force)
+    local get_score = Score.get_table().score_table
+    if not get_score[force] then
+        return false
+    end
+    local score = get_score[force]
+    local score_list = {}
+    for _, p in pairs(game.players) do
+        if score.players[p.name] then
+            local killscore = 0
+            if score.players[p.name].killscore then
+                killscore = score.players[p.name].killscore
+            end
+            local built_entities = 0
+            if score.players[p.name].built_entities then
+                built_entities = score.players[p.name].built_entities
+            end
+            local mined_entities = 0
+            if score.players[p.name].mined_entities then
+                mined_entities = score.players[p.name].mined_entities
+            end
+            table.insert(score_list, {name = p.name, killscore = killscore, built_entities = built_entities, mined_entities = mined_entities})
+        end
+    end
+    local mvp = {}
+    score_list = get_sorted_list('killscore', score_list)
+    mvp.killscore = {name = score_list[1].name, score = score_list[1].killscore}
+    score_list = get_sorted_list('mined_entities', score_list)
+    mvp.mined_entities = {name = score_list[1].name, score = score_list[1].mined_entities}
+    score_list = get_sorted_list('built_entities', score_list)
+    mvp.built_entities = {name = score_list[1].name, score = score_list[1].built_entities}
+    return mvp
+end
+
+local function show_mvps(player)
+    local get_score = Score.get_table().score_table
+    local wave_defense_table = WD.get_table()
+    if not get_score then
         return
     end
-    if not loco.valid then
+    if player.gui.left['mvps'] then
         return
     end
-    local score = floor(loco.position.y * -1)
-    for _, player in pairs(game.connected_players) do
-        if score > Map_score.get_score(player) then
-            Map_score.set_score(player, score)
+    local frame = player.gui.left.add({type = 'frame', name = 'mvps', direction = 'vertical'})
+    local l = frame.add({type = 'label', caption = 'MVPs:'})
+    l.style.font = 'default-listbox'
+    l.style.font_color = {r = 0.55, g = 0.55, b = 0.99}
+
+    local t = frame.add({type = 'table', column_count = 2})
+    local mvp = get_mvps('player')
+    if mvp then
+        local wave_defense = t.add({type = 'label', caption = 'Highest Wave >> '})
+        wave_defense.style.font = 'default-listbox'
+        wave_defense.style.font_color = {r = 0.22, g = 0.77, b = 0.44}
+        local wave_defense_text = t.add({type = 'label', caption = 'This rounds highest wave was: ' .. wave_defense_table.wave_number})
+        wave_defense_text.style.font = 'default-bold'
+        wave_defense_text.style.font_color = {r = 0.33, g = 0.66, b = 0.9}
+
+        local fighter_label = t.add({type = 'label', caption = 'Fighter >> '})
+        fighter_label.style.font = 'default-listbox'
+        fighter_label.style.font_color = {r = 0.22, g = 0.77, b = 0.44}
+        local fighter_label_text = t.add({type = 'label', caption = mvp.killscore.name .. ' with a killing score of ' .. mvp.killscore.score .. ' kills!'})
+        fighter_label_text.style.font = 'default-bold'
+        fighter_label_text.style.font_color = {r = 0.33, g = 0.66, b = 0.9}
+
+        local builder_label = t.add({type = 'label', caption = 'Builder >> '})
+        builder_label.style.font = 'default-listbox'
+        builder_label.style.font_color = {r = 0.22, g = 0.77, b = 0.44}
+        local builder_label_text = t.add({type = 'label', caption = mvp.built_entities.name .. ' built ' .. mvp.built_entities.score .. ' things!'})
+        builder_label_text.style.font = 'default-bold'
+        builder_label_text.style.font_color = {r = 0.33, g = 0.66, b = 0.9}
+
+        local miners_label = t.add({type = 'label', caption = 'Miners >> '})
+        miners_label.style.font = 'default-listbox'
+        miners_label.style.font_color = {r = 0.22, g = 0.77, b = 0.44}
+        local miners_label_text = t.add({type = 'label', caption = mvp.mined_entities.name .. ' mined a total of  ' .. mvp.mined_entities.score .. ' entities!'})
+        miners_label_text.style.font = 'default-bold'
+        miners_label_text.style.font_color = {r = 0.33, g = 0.66, b = 0.9}
+
+        local sent_to_discord = WPT.get('sent_to_discord')
+
+        if not sent_to_discord then
+            local result = {}
+            table.insert(result, 'HIGHEST WAVE: \\n')
+            table.insert(result, wave_defense_table.wave_number .. '\\n')
+            table.insert(result, '\\n')
+            table.insert(result, 'MVP Fighter: \\n')
+            table.insert(result, mvp.killscore.name .. ' with a killing score of ' .. mvp.killscore.score .. ' kills!\\n')
+            table.insert(result, '\\n')
+            table.insert(result, 'MVP Builder: \\n')
+            table.insert(result, mvp.built_entities.name .. ' built ' .. mvp.built_entities.score .. ' things!\\n')
+            table.insert(result, '\\n')
+            table.insert(result, 'MVP Miners: \\n')
+            table.insert(result, mvp.mined_entities.name .. ' mined a total of ' .. mvp.mined_entities.score .. ' entities!\\n')
+            local message = table.concat(result)
+            Server.to_discord_embed(message)
+            WPT.set('sent_to_discord', true)
         end
     end
 end
 
+function Public.unstuck_player(index)
+    local player = game.get_player(index)
+    local surface = player.surface
+    local position = surface.find_non_colliding_position('character', player.position, 32, 0.5)
+    if not position then
+        return
+    end
+    player.teleport(position, surface)
+end
+
 function Public.loco_died()
-    local this = WPT.get()
-    local surface = game.surfaces[this.active_surface_index]
+    local game_lost = WPT.get('game_lost')
+    if not game_lost then
+        return
+    end
+
+    local active_surface_index = WPT.get('active_surface_index')
+    local locomotive = WPT.get('locomotive')
+    local surface = game.surfaces[active_surface_index]
     local wave_defense_table = WD.get_table()
-    Public.set_scores()
-    if not this.locomotive.valid then
+    if wave_defense_table.game_lost then
+        return
+    end
+    Collapse.start_now(false)
+
+    if not locomotive.valid then
+        local this = WPT.get()
         if this.announced_message then
             return
         end
@@ -767,8 +1228,8 @@ function Public.loco_died()
             data.position = {x = 0, y = 0}
         end
 
-        local msg = mapkeeper .. defeated_messages[random(1, #defeated_messages)] .. '\nBetter luck next time.'
-        Alert.alert_all_players_location(data, msg, nil, 6000)
+        local msg = defeated_messages[random(1, #defeated_messages)]
+        Alert.alert_all_players_location(data, msg, nil, 100)
 
         local Reset_map = require 'maps.mountain_fortress_v3.main'.reset_map
         wave_defense_table.game_lost = true
@@ -781,27 +1242,21 @@ function Public.loco_died()
 
         if this.soft_reset then
             this.game_reset_tick = nil
-            Task.set_timeout_in_ticks(60, reset_game, params)
+            Task.set_timeout_in_ticks(600, reset_game, params)
             return
         end
         if this.restart then
             if not this.announced_message then
-                game.print(
-                    'Soft-reset is disabled! Server will restart from scenario to load new changes.',
-                    {r = 0.22, g = 0.88, b = 0.22}
-                )
-                Task.set_timeout_in_ticks(60, reset_game, params)
+                game.print(({'entity.notify_restart'}), {r = 0.22, g = 0.88, b = 0.22})
+                Task.set_timeout_in_ticks(600, reset_game, params)
                 this.announced_message = true
                 return
             end
         end
         if this.shutdown then
             if not this.announced_message then
-                game.print(
-                    'Soft-reset is disabled! Server will shutdown. Most likely because of updates.',
-                    {r = 0.22, g = 0.88, b = 0.22}
-                )
-                Task.set_timeout_in_ticks(60, reset_game, params)
+                game.print(({'entity.notify_shutdown'}), {r = 0.22, g = 0.88, b = 0.22})
+                Task.set_timeout_in_ticks(600, reset_game, params)
                 this.announced_message = true
                 return
             end
@@ -809,30 +1264,16 @@ function Public.loco_died()
 
         return
     end
-    -- raise_event(
-    --     HD.events.reset_game,
-    --     {
-    --         surface = surface
-    --     }
-    -- )
+
+    local this = WPT.get()
+
     this.locomotive_health = 0
     this.locomotive.color = {0.49, 0, 255, 1}
     rendering.set_text(this.health_text, 'HP: ' .. this.locomotive_health .. ' / ' .. this.locomotive_max_health)
     wave_defense_table.game_lost = true
     wave_defense_table.target = nil
-    this.game_lost = true
-    local msg
-    if this.soft_reset then
-        msg =
-            mapkeeper ..
-            defeated_messages[random(1, #defeated_messages)] ..
-                '\nBetter luck next time.\nGame will soft-reset shortly.'
-    else
-        msg =
-            mapkeeper ..
-            defeated_messages[random(1, #defeated_messages)] ..
-                '\nBetter luck next time.\nGame will not soft-reset. Soft-reset is disabled.'
-    end
+    local msg = defeated_messages[random(1, #defeated_messages)]
+
     local pos = {
         position = this.locomotive.position
     }
@@ -840,8 +1281,7 @@ function Public.loco_died()
     game.forces.enemy.set_friend('player', true)
     game.forces.player.set_friend('enemy', true)
 
-    local fake_shooter =
-        surface.create_entity({name = 'character', position = this.locomotive.position, force = 'enemy'})
+    local fake_shooter = surface.create_entity({name = 'character', position = this.locomotive.position, force = 'enemy'})
     surface.create_entity(
         {
             name = 'atomic-rocket',
@@ -858,11 +1298,11 @@ function Public.loco_died()
     this.game_reset_tick = 5400
     for _, player in pairs(game.connected_players) do
         player.play_sound {path = 'utility/game_lost', volume_modifier = 0.75}
+        show_mvps(player)
     end
 end
 
 local function on_built_entity(event)
-    local this = WPT.get()
     local entity = event.created_entity
     if not entity.valid then
         return
@@ -874,7 +1314,9 @@ local function on_built_entity(event)
         return
     end
 
-    local upg = this.upgrades
+    local upgrades = WPT.get('upgrades')
+
+    local upg = upgrades
     local surface = entity.surface
 
     local built = {
@@ -896,30 +1338,30 @@ local function on_built_entity(event)
 
     if built[entity.name] and entity.force.index == 1 then
         if built[entity.name] < limit[entity.name] then
-            this.upgrades[name].built = built[entity.name] + 1
-            this.upgrades.unit_number[name][entity] = entity
-            this.upgrades.showed_text = false
+            upgrades[name].built = built[entity.name] + 1
+            upgrades.unit_number[name][entity] = entity
+            upgrades.showed_text = false
 
             surface.create_entity(
                 {
                     name = 'flying-text',
                     position = entity.position,
-                    text = this.upgrades[name].built .. ' / ' .. limit[entity.name] .. ' ' .. entity.name,
+                    text = upgrades[name].built .. ' / ' .. limit[entity.name] .. ' ' .. entity.name,
                     color = {r = 0.82, g = 0.11, b = 0.11}
                 }
             )
         else
-            if not this.upgrades.showed_text then
+            if not upgrades.showed_text then
                 surface.create_entity(
                     {
                         name = 'flying-text',
                         position = entity.position,
-                        text = entity.name .. ' limit reached. Purchase more slots at the market!',
+                        text = ({'entity.entity_limit_reached', entity.name}),
                         color = {r = 0.82, g = 0.11, b = 0.11}
                     }
                 )
 
-                this.upgrades.showed_text = true
+                upgrades.showed_text = true
             end
             local player = game.players[event.player_index]
             player.insert({name = entity.name, count = 1})
@@ -929,7 +1371,6 @@ local function on_built_entity(event)
 end
 
 local function on_robot_built_entity(event)
-    local this = WPT.get()
     local entity = event.created_entity
     if not entity.valid then
         return
@@ -941,7 +1382,9 @@ local function on_robot_built_entity(event)
         return
     end
 
-    local upg = this.upgrades
+    local upgrades = WPT.get('upgrades')
+
+    local upg = upgrades
     local surface = entity.surface
 
     local built = {
@@ -963,30 +1406,30 @@ local function on_robot_built_entity(event)
 
     if built[entity.name] and entity.force.index == 1 then
         if built[entity.name] < limit[entity.name] then
-            this.upgrades[name].built = built[entity.name] + 1
-            this.upgrades.unit_number[name][entity] = entity
-            this.upgrades.showed_text = false
+            upgrades[name].built = built[entity.name] + 1
+            upgrades.unit_number[name][entity] = entity
+            upgrades.showed_text = false
 
             surface.create_entity(
                 {
                     name = 'flying-text',
                     position = entity.position,
-                    text = this.upgrades[name].built .. ' / ' .. limit[entity.name] .. ' ' .. entity.name,
+                    text = upgrades[name].built .. ' / ' .. limit[entity.name] .. ' ' .. entity.name,
                     color = {r = 0.82, g = 0.11, b = 0.11}
                 }
             )
         else
-            if not this.upgrades.showed_text then
+            if not upgrades.showed_text then
                 surface.create_entity(
                     {
                         name = 'flying-text',
                         position = entity.position,
-                        text = entity.name .. ' limit reached. Purchase more slots at the market!',
+                        text = ({'entity.entity_limit_reached', entity.name}),
                         color = {r = 0.82, g = 0.11, b = 0.11}
                     }
                 )
 
-                this.upgrades.showed_text = true
+                upgrades.showed_text = true
             end
             local inventory = event.robot.get_inventory(defines.inventory.robot_cargo)
             inventory.insert({name = entity.name, count = 1})

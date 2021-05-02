@@ -13,10 +13,12 @@ to your scenario control.lua.
 Minor changes by ~~~Gerkiz~~~
 --]]
 local Event = require 'utils.event'
+local Where = require 'commands.where'
 local Session = require 'utils.datastore.session_data'
 local Jailed = require 'utils.datastore.jail_data'
 local Tabs = require 'comfy_panel.main'
 local Global = require 'utils.global'
+local SpamProtection = require 'utils.spam_protection'
 
 local Public = {}
 
@@ -476,8 +478,7 @@ local function player_list_show(player, frame, sort_by)
     }
     player_list_panel_table.style.maximal_height = 530
 
-    player_list_panel_table =
-        player_list_panel_table.add {type = 'table', name = 'player_list_panel_table', column_count = 5}
+    player_list_panel_table = player_list_panel_table.add {type = 'table', name = 'player_list_panel_table', column_count = 5}
 
     local player_list = get_sorted_list(sort_by)
     for i = 1, #player_list, 1 do
@@ -497,16 +498,16 @@ local function player_list_show(player, frame, sort_by)
 
         if game.players[player_list[i].name].admin then
             trusted = '[color=red][A][/color]'
-            tooltip = 'This player is an admin of this server.'
+            tooltip = 'This player is an admin of this server.\nLeft-click to show this person on map!'
         elseif jailed[player_list[i].name] then
             trusted = '[color=orange][J][/color]'
-            tooltip = 'This player is currently jailed.'
+            tooltip = 'This player is currently jailed.\nLeft-click to show this person on map!'
         elseif play_table[player_list[i].name] then
             trusted = '[color=green][T][/color]'
-            tooltip = 'This player is trusted.'
+            tooltip = 'This player is trusted.\nLeft-click to show this person on map!'
         else
             trusted = '[color=yellow][U][/color]'
-            tooltip = 'This player is not trusted.'
+            tooltip = 'This player is not trusted.\nLeft-click to show this person on map!'
         end
 
         local caption
@@ -517,10 +518,15 @@ local function player_list_show(player, frame, sort_by)
         end
 
         -- Name
+        local p = game.players[player_list[i].name]
+        if not p or not p.valid then
+            return
+        end
+
         local name_label =
             player_list_panel_table.add {
             type = 'label',
-            name = 'player_list_panel_player_names_' .. i,
+            name = p.index,
             caption = caption,
             tooltip = tooltip
         }
@@ -558,8 +564,7 @@ local function player_list_show(player, frame, sort_by)
         -- Poke
         local flow = player_list_panel_table.add {type = 'flow', name = 'button_flow_' .. i, direction = 'horizontal'}
         flow.add {type = 'label', name = 'button_spacer_' .. i, caption = ''}
-        local button =
-            flow.add {type = 'button', name = 'poke_player_' .. player_list[i].name, caption = player_list[i].pokes}
+        local button = flow.add {type = 'button', name = 'poke_player_' .. player_list[i].name, caption = player_list[i].pokes}
         button.style.font = 'default'
         button.tooltip = 'Poke ' .. player_list[i].name .. ' with a random message!'
         label.style.font_color = {r = 0.83, g = 0.83, b = 0.83}
@@ -578,6 +583,7 @@ local function on_gui_click(event)
     if not event then
         return
     end
+
     if not event.element then
         return
     end
@@ -587,8 +593,8 @@ local function on_gui_click(event)
     if not event.element.name then
         return
     end
-    local player = game.players[event.element.player_index]
 
+    local player = game.players[event.player_index]
     local frame = Tabs.comfy_panel_get_active_frame(player)
     if not frame then
         return
@@ -630,12 +636,26 @@ local function on_gui_click(event)
     }
 
     if actions[name] then
+        local is_spamming = SpamProtection.is_spamming(player, nil, 'PlayerList Gui Click')
+        if is_spamming then
+            return
+        end
+
         actions[name]()
         return
     end
 
     if not event.element.valid then
         return
+    end
+    --Locate other players
+    local index = tonumber(event.element.name)
+    if index and game.players[index] and index == game.players[index].index then
+        local target = game.players[index]
+        if not target or not target.valid then
+            return
+        end
+        Where.create_mini_camera_gui(player, target.name, target.position, target.surface.index)
     end
     --Poke other players
     if string.sub(event.element.name, 1, 11) == 'poke_player' then

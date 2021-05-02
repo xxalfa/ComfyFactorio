@@ -1,9 +1,10 @@
 local Market = require 'maps.mountain_fortress_v3.basic_markets'
+local WPT = require 'maps.mountain_fortress_v3.table'
 local Loot = require 'maps.mountain_fortress_v3.loot'
 local Task = require 'utils.task'
 local Token = require 'utils.token'
 local Event = require 'utils.event'
-local Terrain = require 'maps.mountain_fortress_v3.terrain'.heavy_functions
+local Terrain = require 'maps.mountain_fortress_v3.terrain'
 
 local Public = {}
 
@@ -14,7 +15,15 @@ local queue_task = Task.queue_task
 local tiles_per_call = 8
 local total_calls = ceil(1024 / tiles_per_call)
 local regen_decoratives = false
-local force_chunk = false
+local generate_map = Terrain.heavy_functions
+local wintery_type = {
+    ['simple-entity'] = true,
+    ['tree'] = true,
+    ['fish'] = true,
+    ['market'] = true,
+    ['locomotive'] = true,
+    ['cargo-wagon'] = true
+}
 
 -- Set to false by modules that want to control the on_chunk_generated event themselves.
 Public.enable_register_events = true
@@ -174,16 +183,13 @@ local function do_place_treasure(data)
     if #treasure == 0 then
         return
     end
-    pcall(
-        function()
-            for _, e in ipairs(data.treasure) do
-                if random(1, 6) == 1 then
-                    e.chest = 'iron-chest'
-                end
-                Loot.add(surface, e.position, e.chest)
-            end
+
+    for _, e in ipairs(data.treasure) do
+        if random(1, 6) == 1 then
+            e.chest = 'iron-chest'
         end
-    )
+        Loot.add(surface, e.position, e.chest)
+    end
 end
 
 local function do_place_markets(data)
@@ -194,158 +200,180 @@ local function do_place_markets(data)
         return
     end
 
-    pcall(
-        function()
-            local pos = markets[random(1, #markets)]
-            if
-                surface.count_entities_filtered {
-                    area = {{pos.x - 96, pos.y - 96}, {pos.x + 96, pos.y + 96}},
-                    name = 'market',
-                    limit = 1
-                } == 0
-             then
-                local market = Market.mountain_market(surface, pos, abs(pos.y) * 0.004)
-                market.destructible = false
-            end
-        end
-    )
+    local pos = markets[random(1, #markets)]
+    if
+        surface.count_entities_filtered {
+            area = {{pos.x - 96, pos.y - 96}, {pos.x + 96, pos.y + 96}},
+            name = 'market',
+            limit = 1
+        } == 0
+     then
+        local market = Market.mountain_market(surface, pos, abs(pos.y) * 0.004)
+        market.destructible = false
+    end
 end
 
 local function do_place_tiles(data)
     local surface = data.surface
-    pcall(
-        function()
-            surface.set_tiles(data.tiles, true)
-        end
-    )
+    surface.set_tiles(data.tiles, true)
 end
 
 local function do_place_hidden_tiles(data)
     local surface = data.surface
-    pcall(
-        function()
-            surface.set_tiles(data.hidden_tiles, true)
-        end
-    )
+    surface.set_tiles(data.hidden_tiles, true)
 end
 
 local function do_place_decoratives(data)
     local surface = data.surface
-    pcall(
-        function()
-            if regen_decoratives then
-                surface.regenerate_decorative(nil, {{data.top_x / 32, data.top_y / 32}})
-            end
+    if regen_decoratives then
+        surface.regenerate_decorative(nil, {{data.top_x / 32, data.top_y / 32}})
+    end
 
-            local dec = data.decoratives
-            if #dec > 0 then
-                surface.create_decoratives({check_collision = true, decoratives = dec})
-            end
-        end
-    )
+    local dec = data.decoratives
+    if #dec > 0 then
+        surface.create_decoratives({check_collision = true, decoratives = dec})
+    end
 end
 
 local function do_place_buildings(data)
     local surface = data.surface
     local entity
     local callback
-    pcall(
-        function()
-            for _, e in ipairs(data.buildings) do
-                if e.e_type then
-                    local p = e.position
-                    if
-                        surface.count_entities_filtered {
-                            area = {{p.x - 32, p.y - 32}, {p.x + 32, p.y + 32}},
-                            type = e.e_type,
-                            limit = 1
-                        } == 0
-                     then
-                        entity = surface.create_entity(e)
-                        if entity and e.direction then
-                            entity.direction = e.direction
-                        end
-                        if entity and e.force then
-                            entity.force = e.force
-                        end
-                        if entity and e.callback then
-                            local c = e.callback.callback
-                            if not c then
-                                return
-                            end
-                            local d = {callback_data = e.callback.data}
-                            if not d then
-                                callback = Token.get(c)
-                                callback(entity)
-                                return
-                            end
-                            callback = Token.get(c)
-                            callback(entity, d)
-                        end
+    for _, e in ipairs(data.buildings) do
+        if e.e_type then
+            local p = e.position
+            if
+                surface.count_entities_filtered {
+                    area = {{p.x - 32, p.y - 32}, {p.x + 32, p.y + 32}},
+                    type = e.e_type,
+                    limit = 1
+                } == 0
+             then
+                entity = surface.create_entity(e)
+                if entity and e.direction then
+                    entity.direction = e.direction
+                end
+                if entity and e.force then
+                    entity.force = e.force
+                end
+                if entity and e.callback then
+                    local c = e.callback.callback
+                    if not c then
+                        return
                     end
+                    local d = {callback_data = e.callback.data}
+                    if not d then
+                        callback = Token.get(c)
+                        callback(entity)
+                        return
+                    end
+                    callback = Token.get(c)
+                    callback(entity, d)
                 end
             end
         end
-    )
+    end
+end
+
+local function wintery(ent, extra_lights)
+    local winter_mode = WPT.get('winter_mode')
+    if not winter_mode then
+        return false
+    end
+    local colors = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}}
+    local function add_light(e)
+        local color = colors[math.random(1, 3)]
+        local scale = extra_lights or 1
+        rendering.draw_light(
+            {
+                sprite = 'utility/light_small',
+                orientation = 1,
+                scale = scale,
+                intensity = 1,
+                minimum_darkness = 0,
+                oriented = false,
+                color = color,
+                target = e,
+                target_offset = {0, -0.5},
+                surface = e.surface
+            }
+        )
+    end
+    if not (ent and ent.valid) then
+        return
+    end
+    if wintery_type[ent.type] then
+        if ent.type == 'simple-entity' then
+            if random(1, 8) ~= 1 then
+                return
+            end
+        end
+        add_light(ent)
+    end
+    return true
 end
 
 local function do_place_entities(data)
     local surface = data.surface
     local entity
     local callback
-    pcall(
-        function()
-            for _, e in ipairs(data.entities) do
-                if e.collision then
-                    if surface.can_place_entity(e) then
-                        entity = surface.create_entity(e)
-                        if entity and e.direction then
-                            entity.direction = e.direction
-                        end
-                        if entity and e.force then
-                            entity.force = e.force
-                        end
-                        if entity and e.callback then
-                            local c = e.callback.callback
-                            if not c then
-                                return
-                            end
-                            local d = {callback_data = e.callback.data}
-                            if not d then
-                                callback = Token.get(c)
-                                callback(entity)
-                                return
-                            end
-                            callback = Token.get(c)
-                            callback(entity, d)
-                        end
+    for _, e in ipairs(data.entities) do
+        if e.collision then
+            if surface.can_place_entity(e) then
+                entity = surface.create_entity(e)
+                wintery(entity)
+                if entity and e.direction then
+                    entity.direction = e.direction
+                end
+                if entity and e.force then
+                    entity.force = e.force
+                end
+                if entity and e.amount then
+                    entity.amount = e.amount
+                end
+                if entity and e.callback then
+                    local c = e.callback.callback
+                    if not c then
+                        return
                     end
-                else
-                    entity = surface.create_entity(e)
-                    if entity and e.direction then
-                        entity.direction = e.direction
-                    end
-                    if entity and e.force then
-                        entity.force = e.force
-                    end
-                    if entity and e.callback then
-                        local c = e.callback.callback
-                        if not c then
-                            return
-                        end
-                        local d = {callback_data = e.callback.data}
-                        if not d then
-                            callback = Token.get(c)
-                            callback(entity)
-                            return
-                        end
+                    local d = {callback_data = e.callback.data}
+                    if not d then
                         callback = Token.get(c)
-                        callback(entity, d)
+                        callback(entity)
+                        return
                     end
+                    callback = Token.get(c)
+                    callback(entity, d)
                 end
             end
+        else
+            entity = surface.create_entity(e)
+            wintery(entity)
+            if entity and e.direction then
+                entity.direction = e.direction
+            end
+            if entity and e.force then
+                entity.force = e.force
+            end
+            if entity and e.amount then
+                entity.amount = e.amount
+            end
+            if entity and e.callback then
+                local c = e.callback.callback
+                if not c then
+                    return
+                end
+                local d = {callback_data = e.callback.data}
+                if not d then
+                    callback = Token.get(c)
+                    callback(entity)
+                    return
+                end
+                callback = Token.get(c)
+                callback(entity, d)
+            end
         end
-    )
+    end
 end
 
 local function run_chart_update(data)
@@ -371,7 +399,7 @@ local function map_gen_action(data)
     local state = data.y
 
     if state < 32 then
-        local shape = Terrain
+        local shape = generate_map
         if shape == nil then
             return false
         end
@@ -449,7 +477,7 @@ local map_gen_action_token = Token.register(map_gen_action)
 -- @param event <table> the event table from on_chunk_generated
 function Public.schedule_chunk(event)
     local surface = event.surface
-    local shape = Terrain
+    local shape = generate_map
 
     if event.tick < 1 then
         return
@@ -494,7 +522,7 @@ end
 -- @param event <table> the event table from on_chunk_generated
 function Public.do_chunk(event)
     local surface = event.surface
-    local shape = Terrain
+    local shape = generate_map
 
     if not surface.valid then
         return
@@ -543,6 +571,11 @@ local do_chunk = Public.do_chunk
 local schedule_chunk = Public.schedule_chunk
 
 local function on_chunk(event)
+    local force_chunk = WPT.get('force_chunk')
+    local stop_chunk = WPT.get('stop_chunk')
+    if stop_chunk then
+        return
+    end
     if force_chunk then
         do_chunk(event)
     elseif event.tick == 0 then
@@ -553,5 +586,7 @@ local function on_chunk(event)
 end
 
 Event.add(defines.events.on_chunk_generated, on_chunk)
+
+Public.wintery = wintery
 
 return Public

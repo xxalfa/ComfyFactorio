@@ -2,6 +2,7 @@
 
 local Tabs = require 'comfy_panel.main'
 local Global = require 'utils.global'
+local SpamProtection = require 'utils.spam_protection'
 
 local this = {
     player_group = {},
@@ -181,6 +182,7 @@ local function on_gui_click(event)
     if not event then
         return
     end
+
     if not event.element then
         return
     end
@@ -188,8 +190,8 @@ local function on_gui_click(event)
         return
     end
 
-    local player = game.players[event.element.player_index]
     local name = event.element.name
+    local player = game.players[event.player_index]
     local frame = Tabs.comfy_panel_get_active_frame(player)
     if not frame then
         return
@@ -199,6 +201,12 @@ local function on_gui_click(event)
     end
 
     if name == 'create_new_group' then
+        local is_spamming = SpamProtection.is_spamming(player, nil, 'Group Click')
+
+        if is_spamming then
+            return
+        end
+
         local new_group_name = frame.frame2.group_table.new_group_name.text
         local new_group_description = frame.frame2.group_table.new_group_description.text
         if new_group_name ~= '' and new_group_name ~= 'Name' and new_group_description ~= 'Description' then
@@ -252,6 +260,12 @@ local function on_gui_click(event)
     end
     if p then
         if p.name == 'groups_table' then
+            local is_spamming = SpamProtection.is_spamming(player, nil, 'Group Click')
+
+            if is_spamming then
+                return
+            end
+
             if event.element.type == 'button' and event.element.caption == 'Join' then
                 this.player_group[player.name] = event.element.parent.name
                 local str = '[' .. event.element.parent.name
@@ -305,8 +319,12 @@ function Public.alphanumeric_only(value)
 end
 
 function Public.reset_groups()
-    this.player_group = {}
-    this.join_spam_protection = {}
+    local players = game.connected_players
+    for i = 1, #players do
+        local player = players[i]
+        this.player_group[player.name] = '[Group]'
+        this.join_spam_protection[player.name] = game.tick
+    end
     this.tag_groups = {}
 end
 

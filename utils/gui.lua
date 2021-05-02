@@ -1,6 +1,7 @@
 local Token = require 'utils.token'
 local Event = require 'utils.event'
 local Global = require 'utils.global'
+local SpamProtection = require 'utils.spam_protection'
 
 local tostring = tostring
 local next = next
@@ -25,6 +26,10 @@ local on_pre_hidden_handlers = {}
 
 function Gui.uid_name()
     return tostring(Token.uid())
+end
+
+function Gui.uid()
+    return Token.uid()
 end
 
 -- Associates data with the LuaGuiElement. If data is nil then removes the data
@@ -111,6 +116,27 @@ function Gui.clear(element)
     element.clear()
 end
 
+local function clear_invalid_data()
+    for _, player in pairs(game.connected_players) do
+        local player_index = player.index
+        local values = data[player_index]
+        if values then
+            for _, element in next, values do
+                if type(element) == 'table' then
+                    for key, obj in next, element do
+                        if type(obj) == 'table' and obj.valid ~= nil then
+                            if not obj.valid then
+                                element[key] = nil
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+Event.on_nth_tick(300, clear_invalid_data)
+
 local function handler_factory(event_id)
     local handlers
 
@@ -126,9 +152,17 @@ local function handler_factory(event_id)
         end
 
         local player = game.get_player(event.player_index)
-        if not player or not player.valid then
+        if not (player and player.valid) then
             return
         end
+
+        if not event.text then
+            local is_spamming = SpamProtection.is_spamming(player, nil, 'UtilsGUI Handler')
+            if is_spamming then
+                return
+            end
+        end
+
         event.player = player
 
         handler(event)

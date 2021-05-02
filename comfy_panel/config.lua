@@ -4,6 +4,8 @@ local Antigrief = require 'antigrief'
 local Color = require 'utils.color_presets'
 local SessionData = require 'utils.datastore.session_data'
 local Utils = require 'utils.core'
+local SpamProtection = require 'utils.spam_protection'
+local BottomFrame = require 'comfy_panel.bottom_frame'
 
 local spaghett_entity_blacklist = {
     ['logistic-chest-requester'] = true,
@@ -99,6 +101,20 @@ local functions = {
             game.players[event.player_index].spectator = false
         end
     end,
+    ['comfy_panel_bottom_right_frame'] = function(event)
+        local player = game.get_player(event.player_index)
+        if event.element.switch_state == 'left' then
+            local bottom_frame = BottomFrame.get_player_data(player)
+            if not bottom_frame then
+                return
+            end
+            bottom_frame.bottom_left = true
+            BottomFrame.set_location(player)
+        else
+            BottomFrame.get_player_data(player, true)
+            BottomFrame.set_location(player)
+        end
+    end,
     ['comfy_panel_auto_hotbar_switch'] = function(event)
         if event.element.switch_state == 'left' then
             global.auto_hotbar_enabled[event.player_index] = true
@@ -108,17 +124,11 @@ local functions = {
     end,
     ['comfy_panel_blueprint_toggle'] = function(event)
         if event.element.switch_state == 'left' then
-            game.permissions.get_group('Default').set_allows_action(
-                defines.input_action.open_blueprint_library_gui,
-                true
-            )
+            game.permissions.get_group('Default').set_allows_action(defines.input_action.open_blueprint_library_gui, true)
             game.permissions.get_group('Default').set_allows_action(defines.input_action.import_blueprint_string, true)
             get_actor(event, '{Blueprints}', 'has enabled blueprints!')
         else
-            game.permissions.get_group('Default').set_allows_action(
-                defines.input_action.open_blueprint_library_gui,
-                false
-            )
+            game.permissions.get_group('Default').set_allows_action(defines.input_action.open_blueprint_library_gui, false)
             game.permissions.get_group('Default').set_allows_action(defines.input_action.import_blueprint_string, false)
             get_actor(event, '{Blueprints}', 'has disabled blueprints!')
         end
@@ -132,6 +142,25 @@ local functions = {
             get_actor(event, '{Spaghett}', 'has disabled spaghett mode!')
         end
         spaghett()
+    end,
+    ['bb_team_balancing_toggle'] = function(event)
+        if event.element.switch_state == 'left' then
+            global.bb_settings.team_balancing = true
+            game.print('Team balancing has been enabled!')
+        else
+            global.bb_settings.team_balancing = false
+            game.print('Team balancing has been disabled!')
+        end
+    end,
+    ['bb_only_admins_vote'] = function(event)
+        if event.element.switch_state == 'left' then
+            global.bb_settings.only_admins_vote = true
+            global.difficulty_player_votes = {}
+            game.print('Admin-only difficulty voting has been enabled!')
+        else
+            global.bb_settings.only_admins_vote = false
+            game.print('Admin-only difficulty voting has been disabled!')
+        end
     end
 }
 
@@ -146,7 +175,7 @@ local poll_function = {
         end
     end,
     ['comfy_panel_poll_no_notify_toggle'] = function(event)
-        local poll = package.loaded['comfy_panel.poll']
+        local poll = is_loaded('comfy_panel.poll')
         local poll_table = poll.get_no_notify_players()
         if event.element.switch_state == 'left' then
             poll_table[event.player_index] = false
@@ -172,7 +201,7 @@ local antigrief_functions = {
 
 local fortress_functions = {
     ['comfy_panel_disable_fullness'] = function(event)
-        local Fullness = package.loaded['modules.check_fullness']
+        local Fullness = is_loaded('modules.check_fullness')
         local this = Fullness.get()
         if event.element.switch_state == 'left' then
             this.fullness_enabled = true
@@ -183,7 +212,7 @@ local fortress_functions = {
         end
     end,
     ['comfy_panel_offline_players'] = function(event)
-        local WPT = package.loaded['maps.mountain_fortress_v3.table']
+        local WPT = is_loaded('maps.mountain_fortress_v3.table')
         local this = WPT.get()
         if event.element.switch_state == 'left' then
             this.offline_players_enabled = true
@@ -194,48 +223,47 @@ local fortress_functions = {
         end
     end,
     ['comfy_panel_collapse_grace'] = function(event)
-        local WPT = package.loaded['maps.mountain_fortress_v3.table']
+        local WPT = is_loaded('maps.mountain_fortress_v3.table')
         local this = WPT.get()
         if event.element.switch_state == 'left' then
             this.collapse_grace = true
             get_actor(event, '{Collapse}', 'has enabled the collapse function. Collapse will occur after wave 100!')
         else
             this.collapse_grace = false
-            get_actor(
-                event,
-                '{Collapse}',
-                'has disabled the collapse function. You must reach zone 2 for collapse to occur!'
-            )
+            get_actor(event, '{Collapse}', 'has disabled the collapse function. You must reach zone 2 for collapse to occur!')
         end
     end,
     ['comfy_panel_spill_items_to_surface'] = function(event)
-        local WPT = package.loaded['maps.mountain_fortress_v3.table']
+        local WPT = is_loaded('maps.mountain_fortress_v3.table')
         local this = WPT.get()
         if event.element.switch_state == 'left' then
             this.spill_items_to_surface = true
-            get_actor(
-                event,
-                '{Item Spill}',
-                'has enabled the ore spillage function. Ores now drop to surface when mining.'
-            )
+            get_actor(event, '{Item Spill}', 'has enabled the ore spillage function. Ores now drop to surface when mining.')
         else
             this.spill_items_to_surface = false
-            get_actor(
-                event,
-                '{Item Spill}',
-                'has disabled the item spillage function. Ores no longer drop to surface when mining.'
-            )
+            get_actor(event, '{Item Spill}', 'has disabled the item spillage function. Ores no longer drop to surface when mining.')
         end
     end,
     ['comfy_panel_void_or_tile'] = function(event)
-        local WPT = package.loaded['maps.mountain_fortress_v3.table']
+        local WPT = is_loaded('maps.mountain_fortress_v3.table')
         local this = WPT.get()
         if event.element.switch_state == 'left' then
             this.void_or_tile = 'out-of-map'
-            get_actor(event, '{Void}', 'has changes the the tiles of the zones to: out-of-map (void)')
+            get_actor(event, '{Void}', 'has changes the tiles of the zones to: out-of-map (void)')
         else
             this.void_or_tile = 'lab-dark-2'
-            get_actor(event, '{Void}', 'has changes the the tiles of the zones to: dark-tiles (flammable tiles)')
+            get_actor(event, '{Void}', 'has changes the tiles of the zones to: dark-tiles (flammable tiles)')
+        end
+    end,
+    ['comfy_panel_trusted_only_car_tanks'] = function(event)
+        local WPT = is_loaded('maps.mountain_fortress_v3.table')
+        local this = WPT.get()
+        if event.element.switch_state == 'left' then
+            this.trusted_only_car_tanks = true
+            get_actor(event, '{Market}', 'has changed so only trusted people can buy car/tanks.', true)
+        else
+            this.trusted_only_car_tanks = false
+            get_actor(event, '{Market}', 'has changed so everybody can buy car/tanks.', true)
         end
     end
 }
@@ -320,29 +348,33 @@ local build_config_gui = (function(player, frame)
         if global.auto_hotbar_enabled[player.index] then
             switch_state = 'left'
         end
-        add_switch(
-            scroll_pane,
-            switch_state,
-            'comfy_panel_auto_hotbar_switch',
-            'AutoHotbar',
-            'Automatically fills your hotbar with placeable items.'
-        )
+        add_switch(scroll_pane, switch_state, 'comfy_panel_auto_hotbar_switch', 'AutoHotbar', 'Automatically fills your hotbar with placeable items.')
         scroll_pane.add({type = 'line'})
     end
 
-    if package.loaded['comfy_panel.poll'] then
-        local poll = package.loaded['comfy_panel.poll']
+    local poll = is_loaded('comfy_panel.poll')
+    if poll then
         local poll_table = poll.get_no_notify_players()
         switch_state = 'right'
         if not poll_table[player.index] then
             switch_state = 'left'
         end
+        add_switch(scroll_pane, switch_state, 'comfy_panel_poll_no_notify_toggle', 'Notify on polls', 'Receive a message when new polls are created and popup the poll.')
+        scroll_pane.add({type = 'line'})
+    end
+
+    if BottomFrame.is_custom_buttons_enabled() then
+        switch_state = 'right'
+        local bottom_frame = BottomFrame.get('players')
+        if bottom_frame[player.index] then
+            switch_state = 'left'
+        end
         add_switch(
             scroll_pane,
             switch_state,
-            'comfy_panel_poll_no_notify_toggle',
-            'Notify on polls',
-            'Receive a message when new polls are created and popup the poll.'
+            'comfy_panel_bottom_right_frame',
+            'Button Location',
+            'Toggle to select if you want the bottom button on the right side or the left side.'
         )
         scroll_pane.add({type = 'line'})
     end
@@ -363,13 +395,7 @@ local build_config_gui = (function(player, frame)
         if game.permissions.get_group('Default').allows_action(defines.input_action.open_blueprint_library_gui) then
             switch_state = 'left'
         end
-        add_switch(
-            scroll_pane,
-            switch_state,
-            'comfy_panel_blueprint_toggle',
-            'Blueprint Library',
-            'Toggles the usage of blueprint strings and the library.'
-        )
+        add_switch(scroll_pane, switch_state, 'comfy_panel_blueprint_toggle', 'Blueprint Library', 'Toggles the usage of blueprint strings and the library.')
 
         scroll_pane.add({type = 'line'})
 
@@ -385,19 +411,13 @@ local build_config_gui = (function(player, frame)
             'Disables the Logistic System research.\nRequester, buffer or active-provider containers can not be built.'
         )
 
-        if package.loaded['comfy_panel.poll'] then
+        if poll then
             scroll_pane.add({type = 'line'})
             switch_state = 'right'
             if global.comfy_panel_config.poll_trusted then
                 switch_state = 'left'
             end
-            add_switch(
-                scroll_pane,
-                switch_state,
-                'comfy_panel_poll_trusted_toggle',
-                'Poll mode',
-                'Disables non-trusted plebs to create polls.'
-            )
+            add_switch(scroll_pane, switch_state, 'comfy_panel_poll_trusted_toggle', 'Poll mode', 'Disables non-trusted plebs to create polls.')
         end
 
         scroll_pane.add({type = 'line'})
@@ -415,15 +435,53 @@ local build_config_gui = (function(player, frame)
         if AG.enabled then
             switch_state = 'left'
         end
-        add_switch(
-            scroll_pane,
-            switch_state,
-            'comfy_panel_disable_antigrief',
-            'Antigrief',
-            'Left = enables antigrief / Right = disables antigrief'
-        )
+        add_switch(scroll_pane, switch_state, 'comfy_panel_disable_antigrief', 'Antigrief', 'Left = Enables antigrief / Right = Disables antigrief')
         scroll_pane.add({type = 'line'})
-        if package.loaded['maps.mountain_fortress_v3.main'] then
+
+        if is_loaded('maps.biter_battles_v2.main') then
+            label = scroll_pane.add({type = 'label', caption = 'Biter Battles Settings'})
+            label.style.font = 'default-bold'
+            label.style.padding = 0
+            label.style.left_padding = 10
+            label.style.top_padding = 10
+            label.style.horizontal_align = 'left'
+            label.style.vertical_align = 'bottom'
+            label.style.font_color = Color.green
+
+            scroll_pane.add({type = 'line'})
+
+            local switch_state = 'right'
+            if global.bb_settings.team_balancing then
+                switch_state = 'left'
+            end
+            local switch =
+                add_switch(
+                scroll_pane,
+                switch_state,
+                'bb_team_balancing_toggle',
+                'Team Balancing',
+                'Players can only join a team that has less or equal players than the opposing.'
+            )
+            if not admin then
+                switch.ignored_by_interaction = true
+            end
+
+            scroll_pane.add({type = 'line'})
+
+            local switch_state = 'right'
+            if global.bb_settings.only_admins_vote then
+                switch_state = 'left'
+            end
+            local switch =
+                add_switch(scroll_pane, switch_state, 'bb_only_admins_vote', 'Admin Vote', 'Only admins can vote for map difficulty. Clears all currently existing votes.')
+            if not admin then
+                switch.ignored_by_interaction = true
+            end
+
+            scroll_pane.add({type = 'line'})
+        end
+
+        if is_loaded('maps.mountain_fortress_v3.main') then
             label = scroll_pane.add({type = 'label', caption = 'Mountain Fortress Settings'})
             label.style.font = 'default-bold'
             label.style.padding = 0
@@ -433,23 +491,17 @@ local build_config_gui = (function(player, frame)
             label.style.vertical_align = 'bottom'
             label.style.font_color = Color.green
 
-            local Fullness = package.loaded['modules.check_fullness']
+            local Fullness = is_loaded('modules.check_fullness')
             local full = Fullness.get()
             switch_state = 'right'
             if full.fullness_enabled then
                 switch_state = 'left'
             end
-            add_switch(
-                scroll_pane,
-                switch_state,
-                'comfy_panel_disable_fullness',
-                'Inventory Fullness',
-                'Left = enables inventory fullness.\nRight = disables inventory fullness.'
-            )
+            add_switch(scroll_pane, switch_state, 'comfy_panel_disable_fullness', 'Inventory Fullness', 'Left = Enables inventory fullness.\nRight = Disables inventory fullness.')
 
             scroll_pane.add({type = 'line'})
 
-            local WPT = package.loaded['maps.mountain_fortress_v3.table']
+            local WPT = is_loaded('maps.mountain_fortress_v3.table')
             local this = WPT.get()
             switch_state = 'right'
             if this.offline_players_enabled then
@@ -460,7 +512,7 @@ local build_config_gui = (function(player, frame)
                 switch_state,
                 'comfy_panel_offline_players',
                 'Offline Players',
-                'Left = enables offline player inventory drop.\nRight = disables offline player inventory drop.'
+                'Left = Enables offline player inventory drop.\nRight = Disables offline player inventory drop.'
             )
 
             scroll_pane.add({type = 'line'})
@@ -474,7 +526,7 @@ local build_config_gui = (function(player, frame)
                 switch_state,
                 'comfy_panel_collapse_grace',
                 'Collapse',
-                'Left = enables collapse after wave 100.\nRight = disables collapse - you must reach zone 2 for collapse to occur.'
+                'Left = Enables collapse after wave 100.\nRight = Disables collapse - you must reach zone 2 for collapse to occur.'
             )
 
             scroll_pane.add({type = 'line'})
@@ -488,7 +540,7 @@ local build_config_gui = (function(player, frame)
                 switch_state,
                 'comfy_panel_spill_items_to_surface',
                 'Spill Ores',
-                'Left = enables ore spillage to surface when mining.\nRight = disables ore spillage to surface when mining.'
+                'Left = Enables ore spillage to surface when mining.\nRight = Disables ore spillage to surface when mining.'
             )
             scroll_pane.add({type = 'line'})
 
@@ -496,12 +548,19 @@ local build_config_gui = (function(player, frame)
             if this.void_or_tile then
                 switch_state = 'left'
             end
+            add_switch(scroll_pane, switch_state, 'comfy_panel_void_or_tile', 'Void Tiles', 'Left = Changes the tiles to out-of-map.\nRight = Changes the tiles to lab-dark-2')
+            scroll_pane.add({type = 'line'})
+
+            switch_state = 'right'
+            if this.trusted_only_car_tanks then
+                switch_state = 'left'
+            end
             add_switch(
                 scroll_pane,
                 switch_state,
-                'comfy_panel_void_or_tile',
-                'Void Tiles',
-                'Left = changes the tiles to out-of-map.\nRight = changes the tiles to lab-dark-2'
+                'comfy_panel_trusted_only_car_tanks',
+                'Market Purchase',
+                'Left = Allows only trusted people to buy car/tanks.\nRight = Allows everyone to buy car/tanks.'
             )
             scroll_pane.add({type = 'line'})
         end
@@ -515,22 +574,44 @@ local build_config_gui = (function(player, frame)
 end)
 
 local function on_gui_switch_state_changed(event)
+    local player = game.players[event.player_index]
+    if not (player and player.valid) then
+        return
+    end
+
     if not event.element then
         return
     end
     if not event.element.valid then
         return
     end
+
     if functions[event.element.name] then
+        local is_spamming = SpamProtection.is_spamming(player, nil, 'Config Functions Elem')
+        if is_spamming then
+            return
+        end
         functions[event.element.name](event)
         return
     elseif antigrief_functions[event.element.name] then
+        local is_spamming = SpamProtection.is_spamming(player, nil, 'Config AntiGrief Elem')
+        if is_spamming then
+            return
+        end
         antigrief_functions[event.element.name](event)
         return
     elseif fortress_functions[event.element.name] then
+        local is_spamming = SpamProtection.is_spamming(player, nil, 'Config Fortress Elem')
+        if is_spamming then
+            return
+        end
         fortress_functions[event.element.name](event)
         return
-    elseif package.loaded['comfy_panel.poll'] then
+    elseif is_loaded('comfy_panel.poll') then
+        local is_spamming = SpamProtection.is_spamming(player, nil, 'Config Poll Elem')
+        if is_spamming then
+            return
+        end
         if poll_function[event.element.name] then
             poll_function[event.element.name](event)
             return

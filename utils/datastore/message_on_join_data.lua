@@ -19,7 +19,7 @@ local fetch =
             return
         end
         if type(value) == 'table' then
-            game.print('>> ' .. player.name .. ' << ' .. value.msg, value.color)
+            game.print('>> ' .. player.name .. ' << ' .. value.msg, value.color) -- we want the player name to be printed.
         end
     end
 )
@@ -41,7 +41,7 @@ end
 
 commands.add_command(
     'save-message',
-    'Sets your custom join message.',
+    'Sets your custom join message. "{name}" will be replaced with your username',
     function(cmd)
         local player = game.player
         if not player or not player.valid then
