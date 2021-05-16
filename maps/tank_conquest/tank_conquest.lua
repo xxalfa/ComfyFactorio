@@ -1,21 +1,11 @@
 
     -- factorio scenario -- tank conquest -- xalpha made this --
 
-    local event = require 'utils.event'
+    -- local Schedule = require 'maps.tank_battles.on_tick_schedule'
 
-    local map_functions = require 'tools.map_functions'
+    require 'maps.tank_battles.on_tick_schedule'
 
-    local blueprint_poi_base_json = require 'maps.tank_conquest.blueprint_poi_base_json'
-
-    local blueprint_poi_spot_one_json = require 'maps.tank_conquest.blueprint_poi_spot_one_json'
-
-    local blueprint_poi_spot_two_json = require 'maps.tank_conquest.blueprint_poi_spot_two_json'
-
-    local blueprint_poi_spot_three_json = require 'maps.tank_conquest.blueprint_poi_spot_three_json'
-
-    local blueprint_poi_fire_json = require 'maps.tank_conquest.blueprint_poi_fire_json'
-
-    local blueprint_poi_laser_json = require 'maps.tank_conquest.blueprint_poi_laser_json'
+    global.game_players_memory = {}
 
     global.table_of_properties = {}
 
@@ -33,8 +23,6 @@
 
     global.acceleration_value = 0.05
 
-    global.game_stage = 'lobby'
-
     global.table_of_tanks = {}
 
     global.table_of_scores = {}
@@ -49,11 +37,31 @@
 
     global.table_of_delays = {}
 
-    global.table_of_settings = {}
-
     global.table_of_ores = { 'iron-ore', 'copper-ore', 'stone', 'coal' }
 
-    global.table_of_colors = { squad = { r = 75, g = 155, b = 45 }, team = { r = 65, g = 120, b = 200 }, enemy = { r = 190, g = 55, b = 50 }, neutral = { r = 77, g = 77, b = 77 }, damage = { r = 255, g = 0, b = 255 }, white = { r = 1, g = 1, b = 1 }, black = { r = 0, g = 0, b = 0 } }
+    global.table_of_colors = { squad = { r = 75, g = 155, b = 45 } }
+
+    global.game_stage = 'lobby'
+
+    local map_functions = require 'tools.map_functions'
+
+    local function initialize_permissions()
+
+        local permission_spectator = game.permissions.create_group( 'permission_spectator' )
+
+        for key, _ in pairs( defines.input_action ) do permission_spectator.set_allows_action( defines.input_action[ key ], false ) end
+
+        local table_of_allowed_actions = { defines.input_action.admin_action, defines.input_action.gui_checked_state_changed, defines.input_action.gui_click, defines.input_action.gui_confirmed, defines.input_action.gui_elem_changed, defines.input_action.gui_location_changed, defines.input_action.gui_selected_tab_changed, defines.input_action.gui_selection_state_changed, defines.input_action.gui_switch_state_changed, defines.input_action.gui_text_changed, defines.input_action.gui_value_changed, defines.input_action.open_gui, defines.input_action.open_kills_gui, defines.input_action.start_walking, defines.input_action.toggle_show_entity_info, defines.input_action.write_to_console, defines.input_action.edit_permission_group, defines.input_action.edit_custom_tag }
+
+        for _, action in pairs( table_of_allowed_actions ) do permission_spectator.set_allows_action( action, true ) end
+
+        game.permissions.get_group( 'Default' ).set_allows_action( defines.input_action.grab_blueprint_record, false )
+
+        game.permissions.get_group( 'Default' ).set_allows_action( defines.input_action.import_blueprint_string, false )
+
+        game.permissions.get_group( 'Default' ).set_allows_action( defines.input_action.import_blueprint, false )
+
+    end
 
     local function initialize_forces()
 
@@ -77,7 +85,7 @@
 
         force.set_cease_fire( 'player', true )
 
-        local force = game.forces.force_player_two
+        force = game.forces.force_player_two
 
         if global.table_of_properties[ force.name ] == nil then global.table_of_properties[ force.name ] = { name = force.name, enemy = 'force_player_one', icon = '☢', available_tickets = global.amount_of_tickets } end
 
@@ -87,7 +95,7 @@
 
         force.set_cease_fire( 'player', true )
 
-        local force = game.forces.force_biter_one
+        force = game.forces.force_biter_one
 
         force.set_friend( 'force_player_two', true )
 
@@ -97,7 +105,7 @@
 
         force.set_friend( 'player', true )
 
-        local force = game.forces.force_biter_two
+        force = game.forces.force_biter_two
 
         force.set_friend( 'force_player_one', true )
 
@@ -107,7 +115,7 @@
 
         force.set_friend( 'player', true )
 
-        local force = game.forces.force_spectator
+        force = game.forces.force_spectator
 
         force.set_spawn_position( { x = 0, y = 0 }, game.surfaces.nauvis )
 
@@ -125,7 +133,7 @@
 
         force.set_cease_fire( 'enemy', true )
 
-        local force = game.forces.player
+        force = game.forces.player
 
         force.set_cease_fire( 'force_player_one', true )
 
@@ -137,55 +145,44 @@
 
         force.set_cease_fire( 'force_spectator', true )
 
-        local permission = game.permissions.create_group( 'permission_spectator' )
 
-        for key, value in pairs( defines.input_action ) do permission.set_allows_action( defines.input_action[ key ], false ) end
+        for _, force_item in pairs( game.forces ) do
 
-        local table_of_definitions = { defines.input_action.gui_checked_state_changed, defines.input_action.gui_click, defines.input_action.gui_confirmed, defines.input_action.gui_elem_changed, defines.input_action.gui_location_changed, defines.input_action.gui_selected_tab_changed, defines.input_action.gui_selection_state_changed, defines.input_action.gui_switch_state_changed, defines.input_action.gui_text_changed, defines.input_action.gui_value_changed, defines.input_action.start_walking, defines.input_action.open_kills_gui, defines.input_action.toggle_show_entity_info, defines.input_action.write_to_console, defines.input_action.edit_permission_group }
+            game.forces[ force_item.name ].technologies[ 'artillery' ].enabled = false
 
-        for _, define in pairs( table_of_definitions ) do permission.set_allows_action( define, true ) end
+            game.forces[ force_item.name ].technologies[ 'artillery-shell-range-1' ].enabled = false
 
-        for _, force in pairs( game.forces ) do
+            game.forces[ force_item.name ].technologies[ 'artillery-shell-speed-1' ].enabled = false
 
-            game.forces[ force.name ].technologies[ 'artillery' ].enabled = false
+            game.forces[ force_item.name ].technologies[ 'follower-robot-count-1' ].researched = true
 
-            game.forces[ force.name ].technologies[ 'artillery-shell-range-1' ].enabled = false
+            game.forces[ force_item.name ].technologies[ 'atomic-bomb' ].enabled = false
 
-            game.forces[ force.name ].technologies[ 'artillery-shell-speed-1' ].enabled = false
+            -- game.forces[ force_item.name ].set_turret_attack_modifier( 'flamethrower-turret', 1 )
 
-            game.forces[ force.name ].technologies[ 'follower-robot-count-1' ].researched = true
+            -- game.forces[ force_item.name ].set_turret_attack_modifier( 'laser-turret', 1 )
 
-            game.forces[ force.name ].technologies[ 'atomic-bomb' ].enabled = false
+            game.forces[ force_item.name ].set_turret_attack_modifier( 'gun-turret', 2 )
 
-            -- game.forces[ force.name ].set_turret_attack_modifier( 'flamethrower-turret', 1 )
+            game.forces[ force_item.name ].set_ammo_damage_modifier( 'flamethrower', 4 )
 
-            -- game.forces[ force.name ].set_turret_attack_modifier( 'laser-turret', 1 )
+            -- game.forces[ force_item.name ].set_ammo_damage_modifier( 'laser-turret', 2 )
 
-            game.forces[ force.name ].set_turret_attack_modifier( 'gun-turret', 2 )
+            game.forces[ force_item.name ].set_ammo_damage_modifier( 'laser', 2 )
 
-            game.forces[ force.name ].set_ammo_damage_modifier( 'flamethrower', 4 )
+            game.forces[ force_item.name ].set_ammo_damage_modifier( 'bullet', 1 )
 
-            game.forces[ force.name ].set_ammo_damage_modifier( 'laser-turret', 2 )
+            game.forces[ force_item.name ].set_ammo_damage_modifier( 'cannon-shell', 1 )
 
-            game.forces[ force.name ].set_ammo_damage_modifier( 'bullet', 1 )
+            game.forces[ force_item.name ].set_ammo_damage_modifier( 'grenade', 1 )
 
-            game.forces[ force.name ].set_ammo_damage_modifier( 'cannon-shell', 1 )
+            game.forces[ force_item.name ].research_queue_enabled = true
 
-            game.forces[ force.name ].set_ammo_damage_modifier( 'grenade', 1 )
+            game.forces[ force_item.name ].friendly_fire = false
 
-            game.forces[ force.name ].research_queue_enabled = true
-
-            game.forces[ force.name ].friendly_fire = false
-
-            game.forces[ force.name ].share_chart = true
+            game.forces[ force_item.name ].share_chart = true
 
         end
-
-        game.permissions.get_group( 'Default' ).set_allows_action( defines.input_action.grab_blueprint_record, false )
-
-        game.permissions.get_group( 'Default' ).set_allows_action( defines.input_action.import_blueprint_string, false )
-
-        game.permissions.get_group( 'Default' ).set_allows_action( defines.input_action.import_blueprint, false )
 
         game.forces[ 'enemy' ].evolution_factor = 0.4
 
@@ -255,6 +252,28 @@
 
     end
 
+    local function seconds_to_clock( seconds )
+
+        seconds = tonumber( seconds )
+
+        if seconds <= 0 then
+
+            return '00:00:00'
+
+        else
+
+            local hours = string.format( '%02.f', math.floor( seconds / 3600 ) )
+
+            local minutes = string.format( '%02.f', math.floor( seconds / 60 - ( hours * 60 ) ) )
+
+            seconds = string.format( '%02.f', math.floor( seconds - hours * 3600 - minutes * 60 ) )
+
+            return hours .. ':' .. minutes .. ':' .. seconds
+
+        end
+
+    end
+
     local function draw_gui_status_frame( player )
 
         if player.gui.top[ 'draw_gui_status_frame' ] then player.gui.top[ 'draw_gui_status_frame' ].destroy() end
@@ -267,7 +286,7 @@
 
         local element_frame = player.gui.top.add( { type = 'frame', name = 'draw_gui_status_frame', direction = 'horizontal' } )
 
-        element_frame.style.height = 38
+        element_frame.style.height = 32
 
         element_frame.style.margin = 0
 
@@ -287,37 +306,37 @@
 
         element_progressbar.style.top_padding = 10
 
-        element_progressbar.style.color = global.table_of_colors.team
+        element_progressbar.style.color = { r = 65, g = 120, b = 200 }
 
         local element_label = element_frame.add( { type = 'label', caption = math.floor( global.table_of_properties[ player.force.name ].available_tickets ) } )
 
-        element_label.style.font_color = global.table_of_colors.white
+        element_label.style.font_color = { r = 1, g = 1, b = 1 }
 
-        local element_label = element_frame.add( { type = 'label', caption = global.table_of_properties[ player.force.name ].icon } )
+        element_label = element_frame.add( { type = 'label', caption = global.table_of_properties[ player.force.name ].icon } )
 
         element_label.style.left_padding = 20
 
-        element_label.style.font_color = global.table_of_colors.white
+        element_label.style.font_color = { r = 1, g = 1, b = 1 }
 
-        local element_label = element_frame.add( { type = 'label', caption = seconds_to_clock( global.countdown_in_seconds ) } )
+        element_label = element_frame.add( { type = 'label', caption = seconds_to_clock( global.countdown_in_seconds ) } )
 
         element_label.style.left_padding = 20
 
         element_label.style.right_padding = 20
 
-        element_label.style.font_color = global.table_of_colors.white
+        element_label.style.font_color = { r = 1, g = 1, b = 1 }
 
-        local element_label = element_frame.add( { type = 'label', caption = global.table_of_properties[ global.table_of_properties[ player.force.name ].enemy ].icon } )
+        element_label = element_frame.add( { type = 'label', caption = global.table_of_properties[ global.table_of_properties[ player.force.name ].enemy ].icon } )
 
-        element_label.style.font_color = global.table_of_colors.white
+        element_label.style.font_color = { r = 1, g = 1, b = 1 }
 
-        local element_label = element_frame.add( { type = 'label', caption = math.floor( global.table_of_properties[ global.table_of_properties[ player.force.name ].enemy ].available_tickets ) } )
+        element_label = element_frame.add( { type = 'label', caption = math.floor( global.table_of_properties[ global.table_of_properties[ player.force.name ].enemy ].available_tickets ) } )
 
         element_label.style.left_padding = 20
 
-        element_label.style.font_color = global.table_of_colors.white
+        element_label.style.font_color = { r = 1, g = 1, b = 1 }
 
-        local element_progressbar = element_frame.add( { type = 'progressbar', value = 100 } )
+        element_progressbar = element_frame.add( { type = 'progressbar', value = 100 } )
 
         element_progressbar.style.width = 100
 
@@ -325,7 +344,7 @@
 
         element_progressbar.style.top_padding = 10
 
-        element_progressbar.style.color = global.table_of_colors.enemy
+        element_progressbar.style.color = { r = 190, g = 55, b = 50 }
 
         for _, element_item in pairs( element_frame.children ) do element_item.style.font = 'heading-1' end
 
@@ -343,7 +362,7 @@
 
         local element_frame = player.gui.top.add( { type = 'frame', name = 'draw_gui_spots_frame', direction = 'horizontal' } )
 
-        element_frame.style.height = 38
+        element_frame.style.height = 32
 
         element_frame.style.margin = 0
 
@@ -359,7 +378,7 @@
 
             element_label.style.width = 38
 
-            element_label.style.height = 38
+            element_label.style.height = 32
 
             element_label.style.margin = 0
 
@@ -371,15 +390,15 @@
 
             element_label.style.font = 'heading-1'
 
-            local color = global.table_of_colors.white
+            local color = { r = 1, g = 1, b = 1 }
 
             if player.force.name ~= 'force_spectator' then
 
-                color = global.table_of_colors.neutral
+                color = { r = 77, g = 77, b = 77 }
 
-                if spot.properties.force.name == global.table_of_properties[ player.force.name ].name and spot.properties.value == 100 then color = global.table_of_colors.team end
+                if spot.properties.force.name == global.table_of_properties[ player.force.name ].name and spot.properties.value == 100 then color = { r = 65, g = 120, b = 200 } end
 
-                if spot.properties.force.name == global.table_of_properties[ player.force.name ].enemy and spot.properties.value == 100 then color = global.table_of_colors.enemy end
+                if spot.properties.force.name == global.table_of_properties[ player.force.name ].enemy and spot.properties.value == 100 then color = { r = 190, g = 55, b = 50 } end
 
             end
 
@@ -421,61 +440,61 @@
 
             element_item.style.font = 'heading-1'
 
-            element_item.style.font_color = global.table_of_colors.white
+            element_item.style.font_color = { r = 1, g = 1, b = 1 }
 
         end
 
     end
 
-    local function draw_gui_spawn_button( player )
+    -- local function draw_gui_spawn_button( player )
 
-        if player.gui.center[ 'draw_gui_spawn_button' ] then player.gui.center[ 'draw_gui_spawn_button' ].destroy() end
+    --     if player.gui.center[ 'draw_gui_spawn_button' ] then player.gui.center[ 'draw_gui_spawn_button' ].destroy() end
 
-        -- if global.game_stage ~= 'ongoing_game' then return end
+    --     -- if global.game_stage ~= 'ongoing_game' then return end
 
-        local element_frame = player.gui.center.add( { type = 'frame', name = 'draw_gui_spawn_button', direction = 'horizontal' } )
+    --     local element_frame = player.gui.center.add( { type = 'frame', name = 'draw_gui_spawn_button', direction = 'horizontal' } )
 
-        local element_button = element_frame.add( { type = 'button', name = 'event_on_click_spawn_base', caption = 'BASE' } )
+    --     local element_button = element_frame.add( { type = 'button', name = 'event_on_click_spawn_base', caption = 'BASE' } )
 
-        element_button.style.font_color = global.table_of_colors.black
+    --     element_button.style.font_color = { r = 0, g = 0, b = 0 }
 
-        for index, spot in pairs( global.table_of_spots ) do
+    --     for index, spot in pairs( global.table_of_spots ) do
 
-            local element_button = element_frame.add( { type = 'button', name = 'event_on_click_spawn_' .. index, caption = spot.properties.name } )
+    --         local element_button = element_frame.add( { type = 'button', name = 'event_on_click_spawn_' .. index, caption = spot.properties.name } )
 
-            -- element_button.enabled = false
+    --         -- element_button.enabled = false
 
-            local color = global.table_of_colors.neutral
+    --         local color = { r = 77, g = 77, b = 77 }
 
-            -- if spot.properties.force.name == global.table_of_properties[ player.force.name ].name and spot.properties.value >= 50 then element_button.enabled = true end
+    --         -- if spot.properties.force.name == global.table_of_properties[ player.force.name ].name and spot.properties.value >= 50 then element_button.enabled = true end
 
-            if spot.properties.force.name == global.table_of_properties[ player.force.name ].name and spot.properties.value > 0 then color = global.table_of_colors.team end
+    --         if spot.properties.force.name == global.table_of_properties[ player.force.name ].name and spot.properties.value > 0 then color = { r = 65, g = 120, b = 200 } end
 
-            if spot.properties.force.name == global.table_of_properties[ player.force.name ].enemy and spot.properties.value > 0 then color = global.table_of_colors.enemy end
+    --         if spot.properties.force.name == global.table_of_properties[ player.force.name ].enemy and spot.properties.value > 0 then color = { r = 190, g = 55, b = 50 } end
 
-            element_button.style.font_color = color
+    --         element_button.style.font_color = color
 
-        end
+    --     end
 
-        for _, element_item in pairs( element_frame.children ) do
+    --     for _, element_item in pairs( element_frame.children ) do
 
-            element_item.style.width = 100
+    --         element_item.style.width = 100
 
-            element_item.style.height = 100
+    --         element_item.style.height = 100
 
-            element_item.style.padding = 0
+    --         element_item.style.padding = 0
 
-            element_item.style.margin = 0
+    --         element_item.style.margin = 0
 
-            element_item.style.vertical_align = 'center'
+    --         element_item.style.vertical_align = 'center'
 
-            element_item.style.horizontal_align  = 'center'
+    --         element_item.style.horizontal_align  = 'center'
 
-            element_item.style.font  = 'heading-2'
+    --         element_item.style.font  = 'heading-2'
 
-        end
+    --     end
 
-    end
+    -- end
 
     local function create_a_tank( player )
 
@@ -518,6 +537,8 @@
     local function create_a_base( force_name, base_position )
 
         local surface = game.surfaces.tank_conquest
+
+        local blueprint_poi_base_json = require 'maps.tank_conquest.blueprint_poi_base_json'
 
         local table_of_items = game.json_to_table( blueprint_poi_base_json )
 
@@ -563,7 +584,7 @@
 
         local surface = game.surfaces.tank_conquest
 
-        local spot = { name = spot_name, position = spot_position, force = { name = 'neutral' }, value = 0, color = global.table_of_colors.white }
+        local spot = { name = spot_name, position = spot_position, force = { name = 'neutral' }, value = 0, color = { r = 1, g = 1, b = 1 } }
 
         local table_of_positions = {}
 
@@ -775,6 +796,44 @@
 
     end
 
+    local function player_icon_add( player )
+
+        if global.table_of_drawings[ player.index ] == nil then
+
+            -- local icon = rendering.draw_circle( { target = player.character, target_offset = { x = 0, y = - 3.7 }, force = game.forces.force_player_one, surface = player.surface, color = { r = 65, g = 120, b = 200 }, radius = 0.3, filled = true, only_in_alt_mode = false } )
+
+            -- local color = { r = player.color.r * 0.6 + 0.35, g = player.color.g * 0.6 + 0.35, b = player.color.b * 0.6 + 0.35, a = 1 }
+
+            local icon = rendering.draw_text( { text = global.table_of_properties[ player.force.name ].icon, target = player.character, target_offset = { 0, - 3.7 }, surface = player.surface, color = { r = 1, g = 1, b = 1 }, scale = 2, alignment = 'center' } )
+
+            global.table_of_drawings[ player.index ] = icon
+
+        end
+
+    end
+
+    -- local function player_icon_change( player )
+
+    --     if global.table_of_drawings[ player.index ] ~= nil then
+
+    --         local icon = global.table_of_drawings[ player.index ]
+
+    --     end
+
+    -- end
+
+    local function player_icon_remove( player )
+
+        if global.table_of_drawings[ player.index ] ~= nil then
+
+            rendering.destroy( global.table_of_drawings[ player.index ] )
+
+            global.table_of_drawings[ player.index ] = nil
+
+        end
+
+    end
+
     local function event_on_click_battle( player )
 
         if global.game_stage ~= 'ongoing_game' then return end
@@ -861,7 +920,7 @@
 
     end
 
-    local function event_on_click_spawn( player )
+    local function event_on_click_spawn()
 
         game.print( 'A' )
 
@@ -883,35 +942,25 @@
 
     end
 
-    local function on_init( surface )
+    local function on_init()
 
         game.surfaces.nauvis.clear()
 
-        game.surfaces.nauvis.map_gen_settings = { width = 1, height = 1 }
+        game.surfaces.nauvis.map_gen_settings = { width = 10, height = 10 }
 
         game.create_surface( 'tank_conquest', { width = 1, height = 1 } )
 
+        initialize_permissions()
+
         initialize_forces()
 
-        execute_on_tick( 60, draw_circle_lobby, { game.surfaces.nauvis, 28, { x = 0, y = 0 } } )
+        schedule_execute_on_tick( 60, draw_circle_lobby, { game.surfaces.nauvis, 28, { x = 0, y = 0 } } )
 
         -- global.game_stage = 'do_nothing'
 
     end
 
-    event.on_init( on_init )
-
-    -- function execute_on_tick( tick, function_to_execute, table_of_arguments )
-
-    --     if not global.on_tick_schedule then return end
-
-    --     if not global.on_tick_schedule[ tick ] then global.on_tick_schedule[ tick ] = {} end
-
-    --     table.insert( global.on_tick_schedule[ tick ], { func = function_to_execute, args = table_of_arguments } )
-
-    -- end
-
-    local function on_tick( event )
+    local function on_tick()
 
         if game.tick % 60 == 0 then
 
@@ -975,19 +1024,19 @@
 
                 end
 
-                if global.countdown_in_seconds < 0 or global.force_player_one.available_tickets < 0 or global.force_player_two.available_tickets < 0 then
+                if global.countdown_in_seconds < 0 or global.table_of_properties[ 'force_player_one' ].available_tickets < 0 or global.table_of_properties[ 'force_player_two' ].available_tickets < 0 then
 
-                    if global.force_player_one.available_tickets == global.force_player_two.available_tickets then
+                    if global.table_of_properties[ 'force_player_one' ].available_tickets == global.table_of_properties[ 'force_player_two' ].available_tickets then
 
                         game.print( 'The battle is over. The round ended in a draw.' )
 
-                    elseif global.force_player_one.available_tickets > global.force_player_two.available_tickets then
+                    elseif global.table_of_properties[ 'force_player_one' ].available_tickets > global.table_of_properties[ 'force_player_two' ].available_tickets then
 
-                        game.print( 'The battle is over. Force ' .. global.force_player_one.icon .. ' has won the round.' )
+                        game.print( 'The battle is over. Force ' .. global.table_of_properties[ 'force_player_one' ].icon .. ' has won the round.' )
 
                     else
 
-                        game.print( 'The battle is over. Force ' .. global.force_player_two.icon .. ' has won the round.' )
+                        game.print( 'The battle is over. Force ' .. global.table_of_properties[ 'force_player_two' ].icon .. ' has won the round.' )
 
                     end
 
@@ -997,9 +1046,9 @@
 
                     global.table_of_scores = {}
 
-                    global.force_player_one.available_tickets = global.amount_of_tickets
+                    global.table_of_properties[ 'force_player_one' ].available_tickets = global.amount_of_tickets
 
-                    global.force_player_two.available_tickets = global.amount_of_tickets
+                    global.table_of_properties[ 'force_player_two' ].available_tickets = global.amount_of_tickets
 
                     global.countdown_in_seconds = 28800
 
@@ -1049,11 +1098,11 @@
 
                 local position = game.forces.force_spectator.get_spawn_position( game.surfaces.tank_conquest )
 
-                execute_on_tick( game.tick + 1, draw_circle_lobby, { game.surfaces.tank_conquest, 28, position } )
+                schedule_execute_on_tick( game.tick + 1, draw_circle_lobby, { game.surfaces.tank_conquest, 28, position } )
 
-                local position = game.forces.force_player_one.get_spawn_position( game.surfaces.tank_conquest )
+                position = game.forces.force_player_one.get_spawn_position( game.surfaces.tank_conquest )
 
-                execute_on_tick( game.tick + 2, create_a_safety_cube, { game.surfaces.tank_conquest, 'force_player_one', { x = position.x - 150, y = 10 }, 175, 175 } )
+                schedule_execute_on_tick( game.tick + 2, create_a_safety_cube, { game.surfaces.tank_conquest, 'force_player_one', { x = position.x - 150, y = 10 }, 175, 175 } )
 
                 map_functions.draw_noise_tile_circle( { x = position.x - 150, y = 10 }, 'water', game.surfaces.tank_conquest, math.random( 8, 10 ) )
 
@@ -1065,27 +1114,37 @@
 
                 create_a_base( 'force_player_one', position )
 
-                local position = game.forces.force_player_two.get_spawn_position( game.surfaces.tank_conquest )
+                position = game.forces.force_player_two.get_spawn_position( game.surfaces.tank_conquest )
 
-                execute_on_tick( game.tick + 3, create_a_safety_cube, { game.surfaces.tank_conquest, 'force_player_two', { x = position.x + 150, y = 10 }, 175, 175 } )
+                schedule_execute_on_tick( game.tick + 3, create_a_safety_cube, { game.surfaces.tank_conquest, 'force_player_two', { x = position.x + 150, y = 10 }, 175, 175 } )
 
                 map_functions.draw_noise_tile_circle( { x = position.x + 150, y = 10 }, 'water', game.surfaces.tank_conquest, math.random( 8, 10 ) )
 
-                local radius, angle, sides = 10, 1, #table_of_ores
+                radius, angle, sides = 10, 1, #table_of_ores
 
-                local table_of_positions = draw_a_polygon( { x = position.x + 150, y = 10 }, radius, angle, sides )
+                table_of_positions = draw_a_polygon( { x = position.x + 150, y = 10 }, radius, angle, sides )
 
                 for index = 1, #table_of_positions do map_functions.draw_smoothed_out_ore_circle( table_of_positions[ index + 1 ], table_of_ores[ index ], game.surfaces.tank_conquest, 15, 3000 ) end
 
                 create_a_base( 'force_player_two', position )
 
-                local position = { x = 0, y = - 500 }
+                position = { x = 0, y = - 500 }
+
+                local blueprint_poi_laser_json = require 'maps.tank_conquest.blueprint_poi_laser_json'
 
                 create_a_point_of_interest( blueprint_poi_laser_json, position )
 
-                local position = { x = 0, y = 500 }
+                position = { x = 0, y = 500 }
+
+                local blueprint_poi_fire_json = require 'maps.tank_conquest.blueprint_poi_fire_json'
 
                 create_a_point_of_interest( blueprint_poi_fire_json, position )
+
+                local blueprint_poi_spot_one_json = require 'maps.tank_conquest.blueprint_poi_spot_one_json'
+
+                local blueprint_poi_spot_two_json = require 'maps.tank_conquest.blueprint_poi_spot_two_json'
+
+                local blueprint_poi_spot_three_json = require 'maps.tank_conquest.blueprint_poi_spot_three_json'
 
                 local table_of_blueprints = { blueprint_poi_spot_one_json, blueprint_poi_spot_two_json, blueprint_poi_spot_three_json }
 
@@ -1093,9 +1152,9 @@
 
                 local length_of_names = math.random( 3, #table_of_names )
 
-                local position, radius, angle, sides = { x = 0, y = 0 }, math.random( 150, 250 ), math.random( 0.1, 6.3 ), length_of_names
+                position, radius, angle, sides = { x = 0, y = 0 }, math.random( 150, 250 ), math.random( 0.1, 6.3 ), length_of_names
 
-                local table_of_positions = draw_a_polygon( position, radius, angle, sides )
+                table_of_positions = draw_a_polygon( position, radius, angle, sides )
 
                 for index = 1, length_of_names do create_a_spot( table_of_names[ index ], table_of_positions[ index + 1 ], table_of_blueprints[ math.random( 1, #table_of_blueprints ) ] ) end
 
@@ -1219,19 +1278,19 @@
 
     end
 
-    event.add( defines.events.on_tick, on_tick )
-
     local function on_gui_click( event )
+
+        if not event.element.valid then return end
 
         local player = game.players[ event.player_index ]
 
-        if event.element.valid and event.element.name == 'draw_gui_menu_button' then
+        if event.element.name == 'draw_gui_menu_button' then
 
             if player.gui.center[ 'draw_gui_menu_frame' ] then player.gui.center[ 'draw_gui_menu_frame' ].destroy() else draw_gui_menu_frame( player ) end
 
         end
 
-        if event.element.valid and event.element.name == 'event_on_click_lobby' then
+        if event.element.name == 'event_on_click_lobby' then
 
             global.table_of_delays[ player.index ] = game.tick
 
@@ -1243,7 +1302,7 @@
 
         end
 
-        if event.element.valid and event.element.name == 'event_on_click_battle' then
+        if event.element.name == 'event_on_click_battle' then
 
             if global.table_of_delays[ player.index ] ~= nil and game.tick - global.table_of_delays[ player.index ] < 1800 then
 
@@ -1261,15 +1320,13 @@
 
         end
 
-        if event.element.valid and event.element.name == 'event_on_click_spawn_1' then
+        if event.element.name == 'event_on_click_spawn_1' then
 
             event_on_click_spawn( player )
 
         end
 
     end
-
-    event.add( defines.events.on_gui_click, on_gui_click )
 
     local function on_console_chat( event )
 
@@ -1283,27 +1340,27 @@
 
         if event.message:match( '@all' ) then
 
-            player.print( 'The chat settings have been changed to @all.', global.table_of_colors.damage )
+            player.print( 'The chat settings have been changed to @all.', { r = 255, g = 0, b = 255 } )
 
-            global.table_of_settings[ player.index ].chat = 'all'
+            global.game_players_memory[ player.index ].chat = 'all'
 
         end
 
         if event.message:match( '@team' ) then
 
-            player.print( 'The chat settings have been changed to @team.', global.table_of_colors.damage )
+            player.print( 'The chat settings have been changed to @team.', { r = 255, g = 0, b = 255 } )
 
-            global.table_of_settings[ player.index ].chat = 'team'
+            global.game_players_memory[ player.index ].chat = 'team'
 
         end
 
-        if player.force.name == 'force_player_one' and global.table_of_settings[ player.index ].chat == 'all' then
+        if player.force.name == 'force_player_one' and global.game_players_memory[ player.index ].chat == 'all' then
 
             game.forces.force_player_two.print( global.table_of_properties[ player.force.name ].icon .. ' ' .. player.name .. ': '.. event.message, color )
 
         end
 
-        if player.force.name == 'force_player_two' and global.table_of_settings[ player.index ].chat == 'all' then
+        if player.force.name == 'force_player_two' and global.game_players_memory[ player.index ].chat == 'all' then
 
             game.forces.force_player_one.print( global.table_of_properties[ player.force.name ].icon .. ' ' .. player.name .. ': '.. event.message, color )
 
@@ -1324,8 +1381,6 @@
         end
 
     end
-
-    event.add( defines.events.on_console_chat, on_console_chat )
 
     local function on_player_changed_position( event )
 
@@ -1359,8 +1414,6 @@
 
     end
 
-    event.add( defines.events.on_player_changed_position, on_player_changed_position )
-
     local function on_player_respawned( event )
 
         if global.game_stage ~= 'ongoing_game' then return end
@@ -1380,8 +1433,6 @@
         create_a_tank( player )
 
     end
-
-    event.add( defines.events.on_player_respawned, on_player_respawned )
 
     local function on_player_died( event )
 
@@ -1465,7 +1516,7 @@
 
             if p.force.name ~= player.force.name and p.name ~= player_name_of_the_causer then
 
-                p.print( player_death_message, global.table_of_colors.damage )
+                p.print( player_death_message, { r = 255, g = 0, b = 255 } )
 
             end
 
@@ -1473,19 +1524,41 @@
 
     end
 
-    event.add( defines.events.on_player_died, on_player_died )
+    local function on_player_joined_game( event )
 
-    local function on_player_left_game( event )
+        if not global.game_players_memory[ event.player_index ] then
+
+            global.game_players_memory[ event.player_index ] = {}
+
+            global.game_players_memory[ event.player_index ].chat = 'all'
+
+        end
 
         local player = game.players[ event.player_index ]
 
-        global.table_of_spawns[ player.index ] = nil
+        event_on_click_lobby( player )
 
-        global.table_of_scores[ player.index ] = nil
+        -- if player.admin then draw_gui_spawn_button( player ) end
 
-        global.table_of_settings[ player.index ] = nil
+        if global.game_stage == 'ongoing_game' then
+
+            draw_gui_menu_button( player )
+
+            draw_gui_menu_frame( player )
+
+        end
+
+    end
+
+    local function on_player_left_game( event )
+
+        if global.table_of_spawns[ event.player_index ] then global.table_of_spawns[ event.player_index ] = nil end
+
+        if global.table_of_scores[ event.player_index ] then global.table_of_scores[ event.player_index ] = nil end
 
         if global.game_stage ~= 'ongoing_game' then return end
+
+        local player = game.players[ event.player_index ]
 
         player_icon_remove( player )
 
@@ -1503,108 +1576,38 @@
 
     end
 
-    event.add( defines.events.on_player_left_game, on_player_left_game )
-
-    local function on_player_joined_game( event )
-
-        local surface = game.surfaces.nauvis
-
-        local player = game.players[ event.player_index ]
-
-        if global.table_of_settings[ player.index ] == nil then
-
-            global.table_of_settings[ player.index ] = {}
-
-            global.table_of_settings[ player.index ].chat = 'all'
-
-        end
-
-        event_on_click_lobby( player )
-
-        -- if player.admin then draw_gui_spawn_button( player ) end
-
-        if global.game_stage == 'ongoing_game' then
-
-            draw_gui_menu_button( player )
-
-            draw_gui_menu_frame( player )
-
-        end
-
-    end
-
-    event.add( defines.events.on_player_joined_game, on_player_joined_game )
-
-    function player_icon_add( player )
-
-        if global.table_of_drawings[ player.index ] == nil then
-
-            -- local icon = rendering.draw_circle( { target = player.character, target_offset = { x = 0, y = - 3.7 }, force = game.forces.force_player_one, surface = player.surface, color = global.table_of_colors.team, radius = 0.3, filled = true, only_in_alt_mode = false } )
-
-            -- local color = { r = player.color.r * 0.6 + 0.35, g = player.color.g * 0.6 + 0.35, b = player.color.b * 0.6 + 0.35, a = 1 }
-
-            local icon = rendering.draw_text( { text = global.table_of_properties[ player.force.name ].icon, target = player.character, target_offset = { 0, - 3.7 }, surface = player.surface, color = global.table_of_colors.white, scale = 2, alignment = 'center' } )
-
-            global.table_of_drawings[ player.index ] = icon
-
-        end
-
-    end
-
-    function player_icon_change( player )
-
-        if global.table_of_drawings[ player.index ] ~= nil then
-
-            local icon = global.table_of_drawings[ player.index ]
-
-        end
-
-    end
-
-    function player_icon_remove( player )
-
-        if global.table_of_drawings[ player.index ] ~= nil then
-
-            rendering.destroy( global.table_of_drawings[ player.index ] )
-
-            global.table_of_drawings[ player.index ] = nil
-
-        end
-
-    end
-
-    function seconds_to_clock( seconds )
-
-        local seconds = tonumber( seconds )
-
-        if seconds <= 0 then
-
-            return '00:00:00'
-
-        else
-
-            local hours = string.format( '%02.f', math.floor( seconds / 3600 ) )
-
-            local minutes = string.format( '%02.f', math.floor( seconds / 60 - ( hours * 60 ) ) )
-
-            seconds = string.format( '%02.f', math.floor( seconds - hours * 3600 - minutes * 60 ) )
-
-            return hours .. ':' .. minutes .. ':' .. seconds
-
-        end
-
-    end
-
     require 'maps.tank_conquest.module_player_damage'
 
     require 'maps.tank_conquest.module_loot_boxes'
 
     require 'maps.tank_conquest.module_scenario_introduction'
 
+    -- require 'maps.tank_conquest.module_support_request'
+
     require 'maps.tank_conquest.module_player_belt'
+
+    -- require 'maps.tank_conquest.module_player_settings'
 
     -- require 'maps.tank_conquest.module_player_scoreboard'
 
     -- require 'maps.tank_conquest.module_player_squad'
 
-    require 'maps.tank_conquest.module_support_request'
+    local Event = require 'utils.event'
+
+    Event.on_init( on_init )
+
+    Event.add( defines.events.on_tick, on_tick )
+
+    Event.add( defines.events.on_gui_click, on_gui_click )
+
+    Event.add( defines.events.on_console_chat, on_console_chat )
+
+    Event.add( defines.events.on_player_changed_position, on_player_changed_position )
+
+    Event.add( defines.events.on_player_respawned, on_player_respawned )
+
+    Event.add( defines.events.on_player_died, on_player_died )
+
+    Event.add( defines.events.on_player_joined_game, on_player_joined_game )
+
+    Event.add( defines.events.on_player_left_game, on_player_left_game )

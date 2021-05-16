@@ -1,13 +1,11 @@
 
-    local event = require 'utils.event'
+    local utils_gui = require 'utils.gui'
 
-    local gui = require 'utils.gui'
+    local name_headline_button = utils_gui.uid_name()
 
-    local name_headline_button = gui.uid_name()
+    local name_main_frame = utils_gui.uid_name()
 
-    local name_main_frame = gui.uid_name()
-
-    local name_main_button_close = gui.uid_name()
+    local name_main_button_close = utils_gui.uid_name()
 
     local scenario_name = 'Tank Battles'
 
@@ -32,20 +30,6 @@
     To start a round, at least two players must be connected to the server. If a round
     has already started, every completely new player joins the battle. And if you
     need a break, you can make yourself a spectator in the settings at any time.]]
-
-    local function draw_headline_button( player )
-
-        if player.gui.top[ name_headline_button ] then player.gui.top[ name_headline_button ].destroy() end
-
-        local element_button = player.gui.top.add( { type = 'sprite-button', name = name_headline_button, caption = '?', tooltip = 'Scenario Introduction' } )
-
-        element_button.style.height = 38
-
-        element_button.style.font = 'heading-1'
-
-        element_button.style.font_color = { r = 0.5, g = 0.3, b = 0.99 }
-
-    end
 
     local function draw_main_frame( player )
 
@@ -77,9 +61,11 @@
 
     local function on_gui_click( event )
 
+        if not event.element.valid then return end
+
         local player = game.players[ event.player_index ]
 
-        if event.element.valid and event.element.name == name_headline_button then
+        if event.element.name == name_headline_button then
 
             if player.gui.center[ name_main_frame ] then
 
@@ -101,15 +87,21 @@
 
         end
 
-        if event.element.valid and event.element.name == name_main_button_close then
-
-            player.gui.center[ name_main_frame ].visible = false
-
-        end
+        if event.element.name == name_main_button_close then player.gui.center[ name_main_frame ].visible = false end
 
     end
 
-    event.add( defines.events.on_gui_click, on_gui_click )
+    local function draw_headline_button( player )
+
+        if player.gui.top[ name_headline_button ] then player.gui.top[ name_headline_button ].destroy() end
+
+        local element_button = player.gui.top.add( { type = 'sprite-button', name = name_headline_button, caption = '?', tooltip = 'Scenario Introduction' } )
+
+        element_button.style.font = 'heading-1'
+
+        element_button.style.font_color = { r = 0.5, g = 0.3, b = 0.99 }
+
+    end
 
     local function on_player_joined_game( event )
 
@@ -121,4 +113,8 @@
 
     end
 
-    event.add( defines.events.on_player_joined_game, on_player_joined_game )
+    local Event = require 'utils.event'
+
+    Event.add( defines.events.on_player_joined_game, on_player_joined_game )
+
+    Event.add( defines.events.on_gui_click, on_gui_click )

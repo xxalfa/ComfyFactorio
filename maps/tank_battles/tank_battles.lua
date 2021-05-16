@@ -1,19 +1,13 @@
 
     -- tank battles (royale) -- mewmew and xalpha made this --
 
-    local utils = require 'utils.utils'
+    -- local Schedule = require 'maps.tank_battles.on_tick_schedule'
 
-    local event = require 'utils.event'
+    require 'maps.tank_battles.on_tick_schedule'
 
-    local map_functions = require 'tools.map_functions'
-
-    local simplex_noise = require 'utils.simplex_noise'
-
-    simplex_noise = simplex_noise.d2
+    global.game_players_memory = {}
 
     global.table_of_properties = {}
-
-    global.surface_entry_point = nil
 
     global.required_number_of_players = 1
 
@@ -25,43 +19,45 @@
 
     global.arena_size = 1000
 
+    global.arena_tree_chance = 4
+
+    global.arena_tree_noise = 75
+
+    global.loot_box_chance = 1000
+
+    global.noise_seed = 0
+
+    global.game_players_memory = {}
+
+    global.entity_tree = {}
+
+    global.entity_secret = 'inserter'
+
+    global.surface_entry_point = ''
+
     global.distance_to_orbit = 0
 
     global.orbit_reduction_interval = 0
 
-    global.arena_tree_chance = 0
-
-    global.arena_tree_noise = 0
-
-    global.loot_box_chance = 1000
-
-    global.noise_seed = nil
-
     global.game_stage = 'lobby'
 
-    global.table_of_players = {}
-
-    global.entity_tree = {}
-
-    global.entity_secret = {}
+    local simplex_noise = require 'utils.simplex_noise'.d2
 
     local function initialize_permissions()
 
-        local permission = game.permissions.create_group( 'permission_spectator' )
+        local permission_spectator = game.permissions.create_group( 'permission_spectator' )
 
-        for key, value in pairs( defines.input_action ) do permission.set_allows_action( defines.input_action[ key ], false ) end
+        for key, _ in pairs( defines.input_action ) do permission_spectator.set_allows_action( defines.input_action[ key ], false ) end
 
-        local table_of_definitions = { defines.input_action.admin_action, defines.input_action.open_gui, defines.input_action.gui_checked_state_changed, defines.input_action.gui_click, defines.input_action.gui_confirmed, defines.input_action.gui_elem_changed, defines.input_action.gui_location_changed, defines.input_action.gui_selected_tab_changed, defines.input_action.gui_selection_state_changed, defines.input_action.gui_switch_state_changed, defines.input_action.gui_text_changed, defines.input_action.gui_value_changed, defines.input_action.start_walking, defines.input_action.open_kills_gui, defines.input_action.toggle_show_entity_info, defines.input_action.write_to_console, defines.input_action.edit_permission_group, defines.input_action.edit_custom_tag }
+        local table_of_allowed_actions = { defines.input_action.admin_action, defines.input_action.gui_checked_state_changed, defines.input_action.gui_click, defines.input_action.gui_confirmed, defines.input_action.gui_elem_changed, defines.input_action.gui_location_changed, defines.input_action.gui_selected_tab_changed, defines.input_action.gui_selection_state_changed, defines.input_action.gui_switch_state_changed, defines.input_action.gui_text_changed, defines.input_action.gui_value_changed, defines.input_action.open_gui, defines.input_action.open_kills_gui, defines.input_action.start_walking, defines.input_action.toggle_show_entity_info, defines.input_action.write_to_console, defines.input_action.edit_permission_group, defines.input_action.edit_custom_tag }
 
-        for _, define in pairs( table_of_definitions ) do permission.set_allows_action( define, true ) end
+        for _, action in pairs( table_of_allowed_actions ) do permission_spectator.set_allows_action( action, true ) end
 
-        local permission = game.permissions.get_group( 'Default' )
+        game.permissions.get_group( 'Default' ).set_allows_action( defines.input_action.grab_blueprint_record, false )
 
-        permission.set_allows_action( defines.input_action.grab_blueprint_record, false )
+        game.permissions.get_group( 'Default' ).set_allows_action( defines.input_action.import_blueprint_string, false )
 
-        permission.set_allows_action( defines.input_action.import_blueprint_string, false )
-
-        permission.set_allows_action( defines.input_action.import_blueprint, false )
+        game.permissions.get_group( 'Default' ).set_allows_action( defines.input_action.import_blueprint, false )
 
     end
 
@@ -77,7 +73,7 @@
 
         force.share_chart = true
 
-        local force = game.forces.enemy
+        force = game.forces.enemy
 
         force.set_cease_fire( 'force_spectator', true )
 
@@ -95,29 +91,29 @@
 
         game.map_settings.pollution.enabled = false
 
-        local map_gen_settings = {}
+        local mgs = {}
 
-        map_gen_settings.width = global.arena_size
+        mgs.width = global.arena_size
 
-        map_gen_settings.height = global.arena_size
+        mgs.height = global.arena_size
 
-        map_gen_settings.seed = math.random( 1, 2097152 )
+        mgs.seed = math.random( 1, 2097152 )
 
-        map_gen_settings.water = 'none'
+        mgs.water = 'none'
 
-        map_gen_settings.starting_area = 'none'
+        mgs.starting_area = 'none'
 
-        map_gen_settings.cliff_settings = { name = 'cliff', cliff_elevation_0 = 0, cliff_elevation_interval = 0 }
+        mgs.cliff_settings = { name = 'cliff', cliff_elevation_0 = 0, cliff_elevation_interval = 0 }
 
-        map_gen_settings.autoplace_controls = { [ 'trees' ] = { frequency = 'normal', size = 'normal', richness = 'normal' }, [ 'coal' ] = { frequency = 'very-high', size = 'very-low', richness = 'normal' }, [ 'stone' ] = { frequency = 'very-high', size = 'very-low', richness = 'normal' }, [ 'copper-ore' ] = { frequency = 'very-high', size = 'very-low', richness = 'normal' }, [ 'uranium-ore' ] = { frequency = 'very-high', size = 'very-low', richness = 'normal' }, [ 'iron-ore' ] = { frequency = 'very-high', size = 'very-low', richness = 'normal' }, [ 'crude-oil' ] = { frequency = 'very-high', size = 'very-low', richness = 'normal' }, [ 'enemy-base' ] = { frequency = 'normal', size = 'normal', richness = 'normal' } }
+        mgs.autoplace_controls = { [ 'trees' ] = { frequency = 'normal', size = 'normal', richness = 'normal' }, [ 'coal' ] = { frequency = 'very-high', size = 'very-low', richness = 'normal' }, [ 'stone' ] = { frequency = 'very-high', size = 'very-low', richness = 'normal' }, [ 'copper-ore' ] = { frequency = 'very-high', size = 'very-low', richness = 'normal' }, [ 'uranium-ore' ] = { frequency = 'very-high', size = 'very-low', richness = 'normal' }, [ 'iron-ore' ] = { frequency = 'very-high', size = 'very-low', richness = 'normal' }, [ 'crude-oil' ] = { frequency = 'very-high', size = 'very-low', richness = 'normal' }, [ 'enemy-base' ] = { frequency = 'normal', size = 'normal', richness = 'normal' } }
 
-        map_gen_settings.autoplace_settings = { entity = { treat_missing_as_default = false, settings = { frequency = 'none', size = 'none', richness = 'none' } }, decorative = { treat_missing_as_default = true, settings = { frequency = 'none', size = 'none', richness = 'none' } } }
+        mgs.autoplace_settings = { entity = { treat_missing_as_default = false, settings = { frequency = 'none', size = 'none', richness = 'none' } }, decorative = { treat_missing_as_default = true, settings = { frequency = 'none', size = 'none', richness = 'none' } } }
 
-        map_gen_settings.default_enable_all_autoplace_controls = true
+        mgs.default_enable_all_autoplace_controls = true
 
         if game.surfaces.tank_battles == nil then
 
-            game.create_surface( 'tank_battles', map_gen_settings )
+            game.create_surface( 'tank_battles', mgs )
 
         else
 
@@ -125,7 +121,7 @@
 
             game.surfaces.tank_battles.clear()
 
-            game.surfaces.tank_battles.map_gen_settings = map_gen_settings
+            game.surfaces.tank_battles.map_gen_settings = mgs
 
          end
 
@@ -183,11 +179,7 @@
 
             noise[ 2 ] = simplex_noise( position.x * 0.1, position.y * 0.1, seed )
 
-            seed = seed + noise_seed_add
-
-            local noise = noise[ 1 ] + noise[ 2 ] * 0.2
-
-            return noise
+            return noise[ 1 ] + noise[ 2 ] * 0.2
 
         end
 
@@ -203,17 +195,23 @@
 
             noise[ 2 ] = simplex_noise( position.x * 0.1, position.y * 0.1, seed )
 
-            seed = seed + noise_seed_add
-
-            local noise = noise[ 1 ] + noise[ 2 ] * 0.2
-
-            return noise
+            return noise[ 1 ] + noise[ 2 ] * 0.2
 
         end
 
     end
 
-    local function get_valid_random_spawn_position( surface )
+    local function angle_to_position( position, angle, distance )
+
+        local deg_to_rad_factor = math.pi / 180
+
+        angle = angle * deg_to_rad_factor
+
+        return { x = position.x + math.cos( angle ) * distance, y = position.y + math.sin( angle ) * distance }
+
+    end
+
+    local function get_valid_random_spawn_position()
 
         local distance_to_orbit = global.distance_to_orbit - 25
 
@@ -247,9 +245,13 @@
 
         if math.random( 1, 1024 ) ~= 1 then return end
 
-        if math.random( 1, 16 ) == 1 and surface.can_place_entity( { name = global.entity_secret, position = tile_position, force = 'enemy' } ) then
+        if math.random( 1, 16 ) == 1 then
 
-            return surface.create_entity( { name = global.entity_secret, position = tile_position, force = 'enemy' } )
+            if surface.can_place_entity( { name = global.entity_secret, position = tile_position, force = 'enemy' } ) then
+
+                return surface.create_entity( { name = global.entity_secret, position = tile_position, force = 'enemy' } )
+
+            end
 
         end
 
@@ -339,49 +341,39 @@
 
     end
 
-    function angle_to_position( position, angle, distance )
+    -- local function blow_up_the_ground( position_of_center )
 
-        local deg_to_rad_factor = math.pi / 180
+    --     local table_of_items = {}
 
-        angle = angle * deg_to_rad_factor
+    --     for x = -74, 74 do for y = -74, 74 do
 
-        return { x = position.x + math.cos( angle ) * distance, y = position.y + math.sin( angle ) * distance }
+    --         local tile_position = { x = position_of_center.x + x, y = position_of_center.y + y }
 
-    end
+    --         local distance_to_center = math.ceil( math.sqrt( ( tile_position.x - position_of_center.x ) ^ 2 + ( tile_position.y - position_of_center.y ) ^ 2 ) )
 
-    local function blow_up_the_ground( position_of_center )
+    --         if distance_to_center <= 37 then
 
-        local table_of_items = {}
+    --             if not table_of_items[ distance_to_center ] then table_of_items[ distance_to_center ] = {} end
 
-        for x = -74, 74 do for y = -74, 74 do
+    --             table_of_items[ distance_to_center ][ #table_of_items[ distance_to_center ] + 1 ] = tile_position
 
-            local tile_position = { x = position_of_center.x + x, y = position_of_center.y + y }
+    --         end
 
-            local distance_to_center = math.ceil( math.sqrt( ( tile_position.x - position_of_center.x ) ^ 2 + ( tile_position.y - position_of_center.y ) ^ 2 ) )
+    --     end end
 
-            if distance_to_center <= 37 then
+    --     if #table_of_items == 0 then return end
 
-                if not table_of_items[ distance_to_center ] then table_of_items[ distance_to_center ] = {} end
+    --     local next_tick = 1
 
-                table_of_items[ distance_to_center ][ #table_of_items[ distance_to_center ] + 1 ] = tile_position
+    --     for index_one, table_of_tiles in pairs( table_of_items ) do
 
-            end
+    --         for index_two, tile_position in pairs( table_of_tiles ) do schedule_execute_on_tick( game.tick + next_tick, tile_to_water, { tile_position } ) end
 
-        end end
+    --         next_tick = next_tick + 2
 
-        if #table_of_items == 0 then return end
+    --     end
 
-        local next_tick = 1
-
-        for index_one, table_of_tiles in pairs( table_of_items ) do
-
-            for index_two, tile_position in pairs( table_of_tiles ) do execute_on_tick( game.tick + next_tick, tile_to_water, { tile_position } ) end
-
-            next_tick = next_tick + 2
-
-        end
-
-    end
+    -- end
 
     local function create_atomic_rocket( player, position_of_launch, position_of_impact )
 
@@ -411,11 +403,11 @@
 
         rendering.draw_sprite( { surface = player.surface, target = position_of_impact, time_to_live = moment_of_launch + moment_of_impact, sprite = 'utility/shoot_cursor_red', draw_on_ground = true } )
 
-        execute_on_tick( game.tick + moment_of_launch, create_atomic_rocket, { player, position_of_launch, position_of_impact } )
+        schedule_execute_on_tick( game.tick + moment_of_launch, create_atomic_rocket, { player, position_of_launch, position_of_impact } )
 
         -- It looks good, but it creates a bottleneck if there are too many players.
 
-        -- execute_on_tick( game.tick + moment_of_launch + moment_of_impact, blow_up_the_ground, { position_of_impact } )
+        -- schedule_execute_on_tick( game.tick + moment_of_launch + moment_of_impact, blow_up_the_ground, { position_of_impact } )
 
     end
 
@@ -427,8 +419,6 @@
 
         local position_of_center = { x = 0, y = 0 }
 
-        local table_of_items = {}
-
         local next_tick = game.tick + 1
 
         for angle = 0, 360, 0.35 do
@@ -439,7 +429,7 @@
 
                 local area_position = { x = tile_position.x + x, y = tile_position.y + y }
 
-                execute_on_tick( next_tick + math.random( 0, 8 ), tile_to_water, { area_position } )
+                schedule_execute_on_tick( next_tick + math.random( 0, 8 ), tile_to_water, { area_position } )
 
             end end
 
@@ -453,7 +443,9 @@
 
     local function create_a_tank( player )
 
-        if global.table_of_players[ player.index ] == nil or global.table_of_players[ player.index ].in_battle == false then return end
+        if not global.game_players_memory[ player.index ] then return end
+
+        if not global.game_players_memory[ player.index ].in_battle then return end
 
         local position = player.surface.find_non_colliding_position( 'tank', player.position, 32, 4 )
 
@@ -473,27 +465,29 @@
 
         entity.set_driver( player )
 
-        if global.table_of_players[ player.index ] then global.table_of_players[ player.index ].tank = entity end
+        if global.game_players_memory[ player.index ] then global.game_players_memory[ player.index ].tank = entity end
 
     end
 
     local function destroy_a_tank( player )
 
-        if global.table_of_players[ player.index ].tank ~= nil and global.table_of_players[ player.index ].tank.valid then
+        if not global.game_players_memory[ player.index ] then return end
 
-            global.table_of_players[ player.index ].tank.clear_items_inside()
+        if not global.game_players_memory[ player.index ].tank then return end
 
-            global.table_of_players[ player.index ].tank.destroy()
+        if not global.game_players_memory[ player.index ].tank.valid then return end
 
-        end
+        global.game_players_memory[ player.index ].tank.clear_items_inside()
 
-        if global.table_of_players[ player.index ] then global.table_of_players[ player.index ].tank = nil end
+        global.game_players_memory[ player.index ].tank.destroy()
+
+        global.game_players_memory[ player.index ].tank = nil
 
     end
 
     function event_on_click_battle( player )
 
-        if global.table_of_players[ player.index ] then global.table_of_players[ player.index ].in_battle = true end
+        if global.game_players_memory[ player.index ] then global.game_players_memory[ player.index ].in_battle = true end
 
         game.permissions.get_group( 'Default' ).add_player( player )
 
@@ -531,13 +525,13 @@
 
         player.teleport( position, surface )
 
-        execute_on_tick( game.tick + 120, create_a_tank, { player } )
+        schedule_execute_on_tick( game.tick + 120, create_a_tank, { player } )
 
     end
 
     function event_on_click_lobby( player )
 
-        if global.table_of_players[ player.index ] then global.table_of_players[ player.index ].in_battle = false end
+        if global.game_players_memory[ player.index ] then global.game_players_memory[ player.index ].in_battle = false end
 
         game.permissions.get_group( 'permission_spectator' ).add_player( player )
 
@@ -567,27 +561,27 @@
 
     end
 
-    function shuffle( table_of_items )
+    -- function shuffle( table_of_items )
 
-        local length_of_items = #table_of_items
+    --     local length_of_items = #table_of_items
 
-        for index = length_of_items, 1, - 1 do
+    --     for index = length_of_items, 1, - 1 do
 
-            local random = math.random( length_of_items )
+    --         local random = math.random( length_of_items )
 
-            table_of_items[ index ], table_of_items[ random ] = table_of_items[ random ], table_of_items[ index ]
+    --         table_of_items[ index ], table_of_items[ random ] = table_of_items[ random ], table_of_items[ index ]
 
-        end
+    --     end
 
-        return table_of_items
+    --     return table_of_items
 
-    end
+    -- end
 
-    local function on_init( event )
+    local function on_init()
 
         game.surfaces.nauvis.clear()
 
-        game.surfaces.nauvis.map_gen_settings = { width = 10, height = 10 }
+        game.surfaces.nauvis.map_gen_settings = { width = 32, height = 32 }
 
         game.surfaces.nauvis.always_day = true
 
@@ -607,9 +601,7 @@
 
     end
 
-    event.on_init( on_init )
-
-    local function on_tick( event )
+    local function on_tick()
 
         if global.game_stage == 'ongoing_game' then
 
@@ -619,7 +611,7 @@
 
                 for _, player in pairs( game.connected_players ) do
 
-                    if global.table_of_players[ player.index ].in_battle then launch_atomic_rocket( player ) end
+                    if global.game_players_memory[ player.index ].in_battle then launch_atomic_rocket( player ) end
 
                 end
 
@@ -629,7 +621,7 @@
 
                 local number_of_players = 0
 
-                for _, player in pairs( global.table_of_players ) do
+                for _, player in pairs( global.game_players_memory ) do
 
                     if player.in_battle then number_of_players = number_of_players + 1 end
 
@@ -693,7 +685,7 @@
 
             local number_of_fighters = 0
 
-            for _, player in pairs( global.table_of_players ) do
+            for _, player in pairs( global.game_players_memory ) do
 
                 if player.in_battle then number_of_survivors = number_of_survivors + 1 end
 
@@ -707,15 +699,15 @@
 
                     local player_index = nil
 
-                    for index, player in pairs( global.table_of_players ) do
+                    for index, player in pairs( global.game_players_memory ) do
 
                         if player.in_battle then player_index = index end
 
                     end
 
-                    global.table_of_players[ player_index ].won_rounds = global.table_of_players[ player_index ].won_rounds + 1
+                    global.game_players_memory[ player_index ].won_rounds = global.game_players_memory[ player_index ].won_rounds + 1
 
-                    global.table_of_players[ player_index ].in_battle = false
+                    global.game_players_memory[ player_index ].in_battle = false
 
                     game.print( game.players[ player_index ].name .. ' has won the round!' )
 
@@ -733,7 +725,7 @@
 
             for _, player in pairs( game.connected_players ) do
 
-                if global.table_of_players[ player.index ].is_spectator then
+                if global.game_players_memory[ player.index ].is_spectator then
 
                     event_on_click_lobby( player )
 
@@ -763,7 +755,7 @@
 
             local number_of_players = 0
 
-            for _, player in pairs( global.table_of_players ) do
+            for _, player in pairs( global.game_players_memory ) do
 
                 if not player.is_spectator then number_of_players = number_of_players + 1 end
 
@@ -779,7 +771,7 @@
 
         if global.game_stage == 'preparing_spawn_positions' then
 
-            execute_on_tick( game.tick + 1, draw_circle_lobby, { game.surfaces.tank_battles, 14, { x = 0, y = 0 } } )
+            schedule_execute_on_tick( game.tick + 1, draw_circle_lobby, { game.surfaces.tank_battles, 14, { x = 0, y = 0 } } )
 
             global.surface_entry_point = game.surfaces.tank_battles
 
@@ -815,7 +807,7 @@
 
             local number_of_players = 0
 
-            for _, player in pairs( global.table_of_players ) do
+            for _, player in pairs( global.game_players_memory ) do
 
                 if not player.is_spectator then number_of_players = number_of_players + 1 end
 
@@ -835,7 +827,6 @@
 
     end
 
-    event.add( defines.events.on_tick, on_tick )
 
     local function on_player_joined_game( event )
 
@@ -845,7 +836,7 @@
 
         player.game_view_settings = { show_controller_gui = true, show_minimap = false, show_research_info = false, show_entity_info = true, show_alert_gui = true, update_entity_selection = true, show_rail_block_visualisation = false, show_side_menu = false, show_map_view_options = false, show_quickbar = true, show_shortcut_bar = false }
 
-        if not global.table_of_players[ player.index ] then global.table_of_players[ player.index ] = { in_battle = false, is_spectator = false, won_rounds = 0, player_killed = 0, tank = nil, spawn = nil } end
+        if not global.game_players_memory[ player.index ] then global.game_players_memory[ player.index ] = { in_battle = false, is_spectator = false, won_rounds = 0, player_killed = 0, tank = nil, spawn = nil } end
 
         if not game.forces[ 'force_player_' .. player.index ] then
 
@@ -857,11 +848,15 @@
 
             force.set_ammo_damage_modifier( 'capsule', - 0.5 )
 
-            force.set_ammo_damage_modifier( 'laser-turret', - 0.7 )
+            force.set_ammo_damage_modifier( 'laser', - 0.7 )
 
-            force.set_ammo_damage_modifier( 'combat-robot-beam', - 0.9 )
+            force.set_ammo_damage_modifier( 'beam', - 0.9 )
 
-            force.set_ammo_damage_modifier( 'combat-robot-laser', - 0.9 )
+            -- force.set_ammo_damage_modifier( 'laser-turret', - 0.7 )
+
+            -- force.set_ammo_damage_modifier( 'combat-robot-beam', - 0.9 )
+
+            -- force.set_ammo_damage_modifier( 'combat-robot-laser', - 0.9 )
 
             force.technologies[ 'follower-robot-count-1' ].researched = true
 
@@ -889,15 +884,13 @@
 
         if global.is_the_nauvis_lobby_drawn == nil then
 
-            execute_on_tick( game.tick + 1, draw_circle_lobby, { game.surfaces.nauvis, 14, { x = 0, y = 0 } } )
+            schedule_execute_on_tick( game.tick + 1, draw_circle_lobby, { game.surfaces.nauvis, 14, { x = 0, y = 0 } } )
 
             global.is_the_nauvis_lobby_drawn = true
 
         end
 
     end
-
-    event.add( defines.events.on_player_joined_game, on_player_joined_game )
 
     local function on_player_respawned( event )
 
@@ -914,8 +907,6 @@
         end
 
     end
-
-    event.add( defines.events.on_player_respawned, on_player_respawned )
 
     local function on_player_died( event )
 
@@ -941,7 +932,7 @@
 
             if event.cause.name == 'character' then
 
-                global.table_of_players[ event.cause.player.index ].player_killed = global.table_of_players[ event.cause.player.index ].player_killed + 1
+                global.game_players_memory[ event.cause.player.index ].player_killed = global.game_players_memory[ event.cause.player.index ].player_killed + 1
 
                 player_name_of_the_causer = event.cause.player.name
 
@@ -953,7 +944,7 @@
 
                 if driver.player then
 
-                    global.table_of_players[ driver.player.index ].player_killed = global.table_of_players[ driver.player.index ].player_killed + 1
+                    global.game_players_memory[ driver.player.index ].player_killed = global.game_players_memory[ driver.player.index ].player_killed + 1
 
                     player_name_of_the_causer = driver.player.name
 
@@ -985,8 +976,6 @@
 
     end
 
-    event.add( defines.events.on_player_died, on_player_died )
-
     local function on_player_left_game( event )
 
         local player = game.players[ event.player_index ]
@@ -995,11 +984,9 @@
 
         game.merge_forces( 'force_player_' .. player.index, 'neutral' )
 
-        if global.table_of_players[ player.index ] then global.table_of_players[ player.index ] = nil end
+        if global.game_players_memory[ player.index ] then global.game_players_memory[ player.index ] = nil end
 
     end
-
-    event.add( defines.events.on_player_left_game, on_player_left_game )
 
     local function on_console_chat( event )
 
@@ -1029,8 +1016,6 @@
 
     end
 
-    event.add( defines.events.on_console_chat, on_console_chat )
-
     local function on_chunk_generated( event )
 
         if event.surface.name == 'nauvis' then return end
@@ -1049,8 +1034,6 @@
 
     end
 
-    event.add( defines.events.on_chunk_generated, on_chunk_generated )
-
     local function on_chunk_charted( event )
 
         if event.force.name == 'force_spectator' then return end
@@ -1059,15 +1042,12 @@
 
     end
 
-    event.add( defines.events.on_chunk_charted, on_chunk_charted )
-
     local function on_marked_for_deconstruction( event )
 
         event.entity.cancel_deconstruction( game.players[ event.player_index ].force.name )
 
     end
 
-    event.add( defines.events.on_marked_for_deconstruction, on_marked_for_deconstruction )
 
     local function on_picked_up_item( event )
 
@@ -1087,9 +1067,7 @@
 
     end
 
-    event.add( defines.events.on_picked_up_item, on_picked_up_item )
-
-    require 'maps.tank_battles.module_player_color'
+    -- require 'maps.tank_battles.module_player_color'
 
     require 'maps.tank_conquest.module_loot_boxes'
 
@@ -1097,10 +1075,34 @@
 
     require 'maps.tank_battles.module_scenario_introduction'
 
-    require 'maps.tank_conquest.module_player_belt'
+    -- require 'maps.tank_conquest.module_support_request'
 
-    require 'maps.tank_conquest.module_support_request'
+    require 'maps.tank_conquest.module_player_belt'
 
     require 'maps.tank_battles.module_player_settings'
 
     require 'maps.tank_battles.module_player_scoreboard'
+
+    local Event = require 'utils.event'
+
+    Event.on_init( on_init )
+
+    Event.add( defines.events.on_tick, on_tick )
+
+    Event.add( defines.events.on_chunk_generated, on_chunk_generated )
+
+    Event.add( defines.events.on_chunk_charted, on_chunk_charted )
+
+    Event.add( defines.events.on_picked_up_item, on_picked_up_item )
+
+    Event.add( defines.events.on_console_chat, on_console_chat )
+
+    Event.add( defines.events.on_marked_for_deconstruction, on_marked_for_deconstruction )
+
+    Event.add( defines.events.on_player_joined_game, on_player_joined_game )
+
+    Event.add( defines.events.on_player_respawned, on_player_respawned )
+
+    Event.add( defines.events.on_player_died, on_player_died )
+
+    Event.add( defines.events.on_player_left_game, on_player_left_game )

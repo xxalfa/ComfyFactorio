@@ -9,37 +9,25 @@
 
     local name_main_button_submit = utils_gui.uid_name()
 
-    local question_string = ''
-
     local function draw_main_frame( player )
 
         if player.gui.center[ name_main_frame ] then player.gui.center[ name_main_frame ].destroy() end
 
         local element_frame = player.gui.center.add( { type = 'frame', name = name_main_frame, caption = 'Settings', direction = 'vertical' } )
 
-        if global.game_players_memory[ player.index ].is_spectator then
+        local element_label = element_frame.add( { type = 'label', caption = 'EMPTY' } )
 
-            question_string = 'Join the battle again?'
+        element_label.style.font = 'compi'
 
-        else
+        element_label.style.top_padding = 5
 
-            question_string = 'Would like to be a spectator?'
+        element_label.style.bottom_padding = 5
 
-        end
+        element_label.style.horizontal_align = 'center'
 
-        local element_label_one = element_frame.add( { type = 'label', caption = question_string } )
+        element_label.style.horizontally_stretchable = true
 
-        element_label_one.style.font = 'compi'
-
-        element_label_one.style.top_padding = 5
-
-        element_label_one.style.bottom_padding = 5
-
-        element_label_one.style.horizontal_align = 'center'
-
-        element_label_one.style.horizontally_stretchable = true
-
-        element_label_one.style.font_color = { r = 1, g = 1, b = 1 }
+        element_label.style.font_color = { r = 1, g = 1, b = 1 }
 
         local element_flow = element_frame.add( { type = 'flow' } )
 
@@ -47,17 +35,17 @@
 
         element_flow.style.horizontally_stretchable = true
 
-        local element_button_one = element_flow.add( { type = 'button', name = name_main_button_submit, style = 'rounded_button', caption = 'SUBMIT' } )
+        local element_button = element_flow.add( { type = 'button', name = name_main_button_submit, style = 'rounded_button', caption = 'SUBMIT' } )
 
-        element_button_one.style.minimal_width = 150
+        element_button.style.minimal_width = 150
 
-        local element_label_two = element_flow.add( { type = 'label' } )
+        element_label = element_flow.add( { type = 'label' } )
 
-        element_label_two.style.minimal_width = 170
+        element_label.style.minimal_width = 170
 
-        local element_button_two = element_flow.add( { type = 'button', name = name_main_button_close, style = 'rounded_button', caption = 'CLOSE' } )
+        element_button = element_flow.add( { type = 'button', name = name_main_button_close, style = 'rounded_button', caption = 'CLOSE' } )
 
-        element_button_two.style.minimal_width = 150
+        element_button.style.minimal_width = 150
 
     end
 
@@ -71,17 +59,15 @@
 
             if player.gui.center[ name_main_frame ] then
 
-                -- if player.gui.center[ name_main_frame ].visible == true then
+                if player.gui.center[ name_main_frame ].visible == true then
 
-                --     player.gui.center[ name_main_frame ].visible = false
+                    player.gui.center[ name_main_frame ].visible = false
 
-                -- else
+                else
 
-                --     player.gui.center[ name_main_frame ].visible = true
+                    player.gui.center[ name_main_frame ].visible = true
 
-                -- end
-
-                player.gui.center[ name_main_frame ].destroy()
+                end
 
             else
 
@@ -91,27 +77,7 @@
 
         end
 
-        if event.element.name == name_main_button_submit then
-
-            if global.game_players_memory[ player.index ].is_spectator then
-
-                global.game_players_memory[ player.index ].is_spectator = false
-
-                player.print( 'In the next round you will be part of the battle again.', player.chat_color )
-
-            else
-
-                global.game_players_memory[ player.index ].is_spectator = true
-
-                player.print( 'You are now spectating.', player.chat_color )
-
-                event_on_click_lobby( player )
-
-            end
-
-            player.gui.center[ name_main_frame ].visible = false
-
-        end
+        if event.element.name == name_main_button_submit then player.gui.center[ name_main_frame ].visible = false end
 
         if event.element.name == name_main_button_close then player.gui.center[ name_main_frame ].visible = false end
 

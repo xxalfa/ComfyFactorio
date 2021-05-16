@@ -1,43 +1,51 @@
 
-    local event = require 'utils.event'
+    local utils_gui = require 'utils.gui'
+
+    local name_belt_button = utils_gui.uid_name()
 
     local battle_belt = { 'raw-fish', 'repair-pack', 'construction-robot', 'defender-capsule', 'destroyer-capsule', 'distractor-capsule', 'land-mine', 'stone-wall', 'grenade', 'cluster-grenade', 'gun-turret', 'firearm-magazine', 'piercing-rounds-magazine', 'uranium-rounds-magazine', 'rocket', 'explosive-rocket', 'cannon-shell', 'explosive-cannon-shell', 'uranium-cannon-shell', 'explosive-uranium-cannon-shell' }
 
     local construction_belt = { 'inserter', 'fast-inserter', 'long-handed-inserter', 'transport-belt', 'underground-belt', 'splitter', 'assembling-machine-1', 'assembling-machine-2', 'small-electric-pole', 'medium-electric-pole', 'electric-mining-drill', 'stone-furnace', 'steel-furnace', 'train-stop', 'rail-signal', 'rail-chain-signal', 'rail', 'boiler', 'steam-engine', 'offshore-pump' }
 
-    function draw_gui_belt_button( player )
+    local function draw_headline_button( player )
 
-        if not global.table_of_players[ player.index ] then global.table_of_players[ player.index ] = {} end
+        for index, slot in pairs( battle_belt ) do player.set_quick_bar_slot( index, slot ) end
 
-        if global.table_of_players[ player.index ].belt == nil then
+        if player.gui.top[ name_belt_button ] then player.gui.top[ name_belt_button ].destroy() end
 
-            global.table_of_players[ player.index ].belt = 'battle';
+        player.gui.top.add( { type = 'sprite-button', name = name_belt_button, sprite = 'item/repair-pack', tooltip = 'BELT' } )
 
-            for index, slot in pairs( battle_belt ) do player.set_quick_bar_slot( index, slot ) end
+    end
 
-        end
+    local function on_player_joined_game( event )
 
-        if player.gui.top[ 'draw_gui_belt_button' ] then player.gui.top[ 'draw_gui_belt_button' ].destroy() end
+        if not global.game_players_memory[ event.player_index ] then global.game_players_memory[ event.player_index ] = {} end
 
-        player.gui.top.add( { type = 'sprite-button', name = 'draw_gui_belt_button', sprite = 'item/repair-pack', tooltip = 'BELT' } )
+        if not global.game_players_memory[ event.player_index ].belt then global.game_players_memory[ event.player_index ].belt = 'battle' end
+
+        local player = game.players[ event.player_index ]
+
+        draw_headline_button( player )
 
     end
 
     local function on_gui_click( event )
 
+        if not event.element.valid then return end
+
         local player = game.players[ event.player_index ]
 
-        if event.element.valid and event.element.name == 'draw_gui_belt_button' then
+        if event.element.name == name_belt_button then
 
-            if global.table_of_players[ player.index ].belt == 'battle' then
+            if global.game_players_memory[ player.index ].belt == 'battle' then
 
-                global.table_of_players[ player.index ].belt = 'construction'
+                global.game_players_memory[ player.index ].belt = 'construction'
 
                 for index, slot in pairs( construction_belt ) do player.set_quick_bar_slot( index, slot ) end
 
             else
 
-                global.table_of_players[ player.index ].belt = 'battle'
+                global.game_players_memory[ player.index ].belt = 'battle'
 
                 for index, slot in pairs( battle_belt ) do player.set_quick_bar_slot( index, slot ) end
 
@@ -47,14 +55,18 @@
 
     end
 
-    event.add( defines.events.on_gui_click, on_gui_click )
+    local function on_player_left_game( event )
 
-    local function on_player_joined_game( event )
-
-        local player = game.players[ event.player_index ]
-
-        draw_gui_belt_button( player )
+        if global.game_players_memory[ event.player_index ].belt then global.game_players_memory[ event.player_index ].belt = nil end
 
     end
 
-    event.add( defines.events.on_player_joined_game, on_player_joined_game )
+    local Event = require 'utils.event'
+
+    Event.on_init( on_init )
+
+    Event.add( defines.events.on_player_joined_game, on_player_joined_game )
+
+    Event.add( defines.events.on_gui_click, on_gui_click )
+
+    Event.add( defines.events.on_player_left_game, on_player_left_game )

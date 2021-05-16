@@ -1,31 +1,21 @@
 
-    local event = require 'utils.event'
-
-    local gui = require 'utils.gui'
-
     local print_override = require 'utils.print_override'
+
+    local utils_gui = require 'utils.gui'
 
     local max_support_request_length = 1000
 
-    local name_headline_button = gui.uid_name()
+    local name_headline_button = utils_gui.uid_name()
 
-    local name_main_frame = gui.uid_name()
+    local name_main_frame = utils_gui.uid_name()
 
-    local name_textarea_content = gui.uid_name()
+    local name_textarea_content = utils_gui.uid_name()
 
-    local name_main_button_submit = gui.uid_name()
+    local name_main_button_submit = utils_gui.uid_name()
 
-    local name_label_counter = gui.uid_name()
+    local name_label_counter = utils_gui.uid_name()
 
-    local name_main_button_close = gui.uid_name()
-
-    local function draw_headline_button( player )
-
-        if player.gui.top[ name_headline_button ] then player.gui.top[ name_headline_button ].destroy() end
-
-        player.gui.top.add( { type = 'sprite-button', name = name_headline_button, sprite = 'entity/compilatron', tooltip = 'Comfylatron' } )
-
-    end
+    local name_main_button_close = utils_gui.uid_name()
 
     local function draw_main_frame( player )
 
@@ -59,7 +49,7 @@
 
         element_textarea.focus()
 
-        local element_flow = element_frame.add( { type = 'flow' } )
+        element_flow = element_frame.add( { type = 'flow' } )
 
         element_flow.style.top_padding = 5
 
@@ -71,7 +61,7 @@
 
         element_button.style.minimal_width = 150
 
-        local element_label = element_flow.add( { type = 'label', name = name_label_counter, caption = max_support_request_length } )
+        element_label = element_flow.add( { type = 'label', name = name_label_counter, caption = max_support_request_length } )
 
         element_label.style.top_padding = 3
 
@@ -83,7 +73,7 @@
 
         element_label.style.horizontal_align = 'center'
 
-        local element_button = element_flow.add( { type = 'button', name = name_main_button_close, style = 'rounded_button', caption = 'CLOSE' } )
+        element_button = element_flow.add( { type = 'button', name = name_main_button_close, style = 'rounded_button', caption = 'CLOSE' } )
 
         element_button.style.minimal_width = 150
 
@@ -91,9 +81,11 @@
 
     local function on_gui_click( event )
 
+        if not event.element.valid then return end
+
         local player = game.players[ event.player_index ]
 
-        if event.element.valid and event.element.name == name_headline_button then
+        if event.element.name == name_headline_button then
 
             if player.gui.center[ name_main_frame ] then
 
@@ -117,7 +109,7 @@
 
         end
 
-        if event.element.valid and event.element.name == name_main_button_submit then
+        if event.element.name == name_main_button_submit then
 
             local element_textarea_content = event.element.parent.parent.children[ 2 ]
 
@@ -151,7 +143,7 @@
 
         end
 
-        if event.element.valid and event.element.name == name_main_button_close then
+        if event.element.name == name_main_button_close then
 
             player.gui.center[ name_main_frame ].visible = false
 
@@ -159,11 +151,7 @@
 
     end
 
-    event.add( defines.events.on_gui_click, on_gui_click )
-
     local function on_gui_text_changed( event )
-
-        local player = game.players[ event.player_index ]
 
         if event.element.name == name_textarea_content then
 
@@ -177,7 +165,13 @@
 
     end
 
-    event.add( defines.events.on_gui_text_changed, on_gui_text_changed )
+    local function draw_headline_button( player )
+
+        if player.gui.top[ name_headline_button ] then player.gui.top[ name_headline_button ].destroy() end
+
+        player.gui.top.add( { type = 'sprite-button', name = name_headline_button, sprite = 'entity/compilatron', tooltip = 'Comfylatron' } )
+
+    end
 
     local function on_player_joined_game( event )
 
@@ -187,4 +181,10 @@
 
     end
 
-    event.add( defines.events.on_player_joined_game, on_player_joined_game )
+    local Event = require 'utils.event'
+
+    Event.add( defines.events.on_player_joined_game, on_player_joined_game )
+
+    Event.add( defines.events.on_gui_text_changed, on_gui_text_changed )
+
+    Event.add( defines.events.on_gui_click, on_gui_click )

@@ -1,23 +1,17 @@
 
-    local event = require 'utils.event'
+    local utils_gui = require 'utils.gui'
 
-    local gui = require 'utils.gui'
+    local name_squad_button = utils_gui.uid_name()
 
-    local function draw_gui_squad_button( player )
+    local name_squad_frame = utils_gui.uid_name()
 
-        if player.gui.top[ 'draw_gui_squad_button' ] then player.gui.top[ 'draw_gui_squad_button' ].destroy() end
+    local function draw_main_frame( player )
 
-        player.gui.top.add( { type = 'sprite-button', name = 'draw_gui_squad_button', sprite = 'item/personal-roboport-equipment', tooltip = 'SQUAD' } )
-
-    end
-
-    local function draw_gui_squad_frame( player )
-
-        if player.gui.left[ 'draw_gui_squad_frame' ] then player.gui.left[ 'draw_gui_squad_frame' ].destroy() end
+        if player.gui.left[ name_squad_frame ] then player.gui.left[ name_squad_frame ].destroy() end
 
         -- if global.game_stage ~= 'ongoing_game' then return end
 
-        local element_frame = player.gui.left.add( { type = 'frame', name = 'draw_gui_squad_frame', direction = 'vertical' } )
+        local element_frame = player.gui.left.add( { type = 'frame', name = name_squad_frame, direction = 'vertical' } )
 
         element_frame.style.minimal_width = 50
 
@@ -37,11 +31,11 @@
 
         for index = 1, 8 do
 
-            local element_label = element_table.add( { type = 'label', caption = 'SQUAD ' .. index } )
+            element_table.add( { type = 'label', caption = 'SQUAD ' .. index } )
 
-            local element_label = element_table.add( { type = 'label' } )
+            element_table.add( { type = 'label' } )
 
-            local element_label = element_table.add( { type = 'label' } )
+            element_table.add( { type = 'label' } )
 
             local element_button = element_table.add( { type = 'sprite-button', name = 'aaa_' .. index, caption = 'JOIN' } )
 
@@ -49,13 +43,13 @@
 
             element_button.style.height = 25
 
-            local element_label = element_table.add( { type = 'label', caption = '•' } )
+            element_table.add( { type = 'label', caption = '•' } )
 
-            local element_label = element_table.add( { type = 'label', caption = '•' } )
+            element_table.add( { type = 'label', caption = '•' } )
 
-            local element_label = element_table.add( { type = 'label', caption = '•' } )
+            element_table.add( { type = 'label', caption = '•' } )
 
-            local element_label = element_table.add( { type = 'label', caption = '•' } )
+            element_table.add( { type = 'label', caption = '•' } )
 
         end
 
@@ -73,7 +67,7 @@
 
             element_item.style.font  = 'heading-2'
 
-            element_item.style.font_color = global.table_of_colors.white
+            element_item.style.font_color = { r = 1, g = 1, b = 1 }
 
         end
 
@@ -81,24 +75,36 @@
 
     local function on_gui_click( event )
 
+        if not event.element.valid then return end
+
         local player = game.players[ event.player_index ]
 
-        if event.element.valid and event.element.name == 'draw_gui_squad_button' then
+        if event.element.name == name_squad_button then
 
-            if player.gui.left[ 'draw_gui_squad_frame' ] then player.gui.left[ 'draw_gui_squad_frame' ].destroy() else draw_gui_squad_frame( player ) end
+            if player.gui.left[ name_squad_frame ] then player.gui.left[ name_squad_frame ].destroy() else draw_main_frame( player ) end
 
         end
 
     end
 
-    event.add( defines.events.on_gui_click, on_gui_click )
+    local function draw_headline_button( player )
+
+        if player.gui.top[ name_squad_button ] then player.gui.top[ name_squad_button ].destroy() end
+
+        player.gui.top.add( { type = 'sprite-button', name = name_squad_button, sprite = 'item/personal-roboport-equipment', tooltip = 'SQUAD' } )
+
+    end
 
     local function on_player_joined_game( event )
 
         local player = game.players[ event.player_index ]
 
-        -- if player.admin then draw_gui_squad_button( player ) end
+        if player.admin then draw_headline_button( player ) end
 
     end
 
-    event.add( defines.events.on_player_joined_game, on_player_joined_game )
+    local Event = require 'utils.event'
+
+    Event.add( defines.events.on_player_joined_game, on_player_joined_game )
+
+    Event.add( defines.events.on_gui_click, on_gui_click )
